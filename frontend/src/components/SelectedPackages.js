@@ -15,7 +15,6 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { usePackageContext } from '../context/PackageContext';
 
-// Package list item component
 const PackageListItem = ({ pkg, onRemove, showRemove = true }) => (
   <ListItem>
     <ListItemText
@@ -54,31 +53,9 @@ const PackageListItem = ({ pkg, onRemove, showRemove = true }) => (
   </ListItem>
 );
 
-// Package list section component
-const PackageListSection = ({ title, packages, onRemove, showRemove = true }) => {
-  if (packages.length === 0) return null;
-  
-  return (
-    <>
-      <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-        {title} ({packages.length})
-      </Typography>
-      <List>
-        {packages.map((pkg) => (
-          <PackageListItem 
-            key={pkg.id} 
-            pkg={pkg} 
-            onRemove={onRemove}
-            showRemove={showRemove}
-          />
-        ))}
-      </List>
-    </>
-  );
-};
-
 const SelectedPackages = () => {
   const { 
+    selectedPackages, 
     refreshingSelected, 
     refreshSelectedVersions, 
     removeFromSelection,
@@ -86,11 +63,11 @@ const SelectedPackages = () => {
     getFollowedPackagesInfo
   } = usePackageContext();
 
-  const followedPackages = getFollowedPackagesInfo();
-  const selectedPackages = getSelectedPackagesInfo()
-    .filter(pkg => !followedPackages.some(f => f.id === pkg.id));
+  const followedPackagesInfo = getFollowedPackagesInfo();
+  const selectedPackagesInfo = getSelectedPackagesInfo()
+    .filter(pkg => !followedPackagesInfo.some(f => f.id === pkg.id));
 
-  if (followedPackages.length === 0 && selectedPackages.length === 0) {
+  if (followedPackagesInfo.length === 0 && selectedPackagesInfo.length === 0) {
     return null;
   }
 
@@ -110,21 +87,40 @@ const SelectedPackages = () => {
         </Button>
       </Box>
 
-      <PackageListSection 
-        title="Followed Packages" 
-        packages={followedPackages} 
-        showRemove={false}
-      />
-
-      {followedPackages.length > 0 && selectedPackages.length > 0 && (
-        <Divider sx={{ my: 2 }} />
+      {followedPackagesInfo.length > 0 && (
+        <>
+          <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+            Followed Packages ({followedPackagesInfo.length})
+          </Typography>
+          <List>
+            {followedPackagesInfo.map((pkg) => (
+              <PackageListItem 
+                key={pkg.id} 
+                pkg={pkg}
+                showRemove={false}
+              />
+            ))}
+          </List>
+        </>
       )}
 
-      <PackageListSection 
-        title="Selected Packages" 
-        packages={selectedPackages} 
-        onRemove={removeFromSelection}
-      />
+      {selectedPackagesInfo.length > 0 && (
+        <>
+          {followedPackagesInfo.length > 0 && <Divider sx={{ my: 2 }} />}
+          <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+            Selected Packages ({selectedPackagesInfo.length})
+          </Typography>
+          <List>
+            {selectedPackagesInfo.map((pkg) => (
+              <PackageListItem 
+                key={pkg.id} 
+                pkg={pkg} 
+                onRemove={removeFromSelection}
+              />
+            ))}
+          </List>
+        </>
+      )}
     </Paper>
   );
 };

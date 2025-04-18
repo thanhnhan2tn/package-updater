@@ -1,24 +1,47 @@
 import React from 'react';
-import { Layout, Typography } from 'antd';
-import { PackageProvider } from './context/PackageContext';
-import PackageTable from './components/PackageTable';
+import { Container, Typography } from '@mui/material';
+import { PackageProvider, usePackageContext } from './context/PackageContext';
+import SelectedPackages from './components/SelectedPackages';
+import ProjectAccordion from './components/ProjectAccordion';
+import LoadingSpinner from './components/LoadingSpinner';
+import ErrorMessage from './components/ErrorMessage';
 
-const { Header, Content } = Layout;
-const { Title } = Typography;
+const PackageManager = () => {
+  const { loading, error, getPackagesByProject } = usePackageContext();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (error) {
+    return <ErrorMessage message={error} />;
+  }
+
+  const packagesByProject = getPackagesByProject();
+
+  return (
+    <Container sx={{ mt: 4 }}>
+      <Typography variant="h4" gutterBottom>
+        Package Dependencies
+      </Typography>
+
+      <SelectedPackages />
+
+      {Object.entries(packagesByProject).map(([project, projectPackages]) => (
+        <ProjectAccordion 
+          key={project} 
+          project={project} 
+          packages={projectPackages} 
+        />
+      ))}
+    </Container>
+  );
+};
 
 function App() {
   return (
     <PackageProvider>
-      <Layout style={{ minHeight: '100vh' }}>
-        <Header style={{ background: '#fff', padding: '0 24px' }}>
-          <Title level={3} style={{ margin: '16px 0' }}>
-            Package Version Checker
-          </Title>
-        </Header>
-        <Content style={{ padding: '24px' }}>
-          <PackageTable />
-        </Content>
-      </Layout>
+      <PackageManager />
     </PackageProvider>
   );
 }

@@ -13,20 +13,17 @@ import PackageTable from './PackageTable';
 
 const ProjectAccordion = ({ project, packages }) => {
   const { selectedPackages, checkAllInProject } = usePackageContext();
-  
-  // Check if all packages in this project are selected
-  const allSelected = packages.every(pkg => selectedPackages.includes(pkg.id));
-  
-  // Check if some packages in this project are selected
-  const someSelected = packages.some(pkg => selectedPackages.includes(pkg.id)) && !allSelected;
 
   return (
     <Accordion defaultExpanded>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
           <Checkbox
-            checked={allSelected}
-            indeterminate={someSelected}
+            checked={packages.every(pkg => selectedPackages.includes(pkg.id))}
+            indeterminate={
+              packages.some(pkg => selectedPackages.includes(pkg.id)) &&
+              !packages.every(pkg => selectedPackages.includes(pkg.id))
+            }
             onChange={(e) => checkAllInProject(project, e.target.checked)}
             onClick={(e) => e.stopPropagation()}
           />
