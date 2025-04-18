@@ -1,0 +1,12 @@
+[
+  {
+    "name": "project1",
+    "frontend": "./project1/frontend/package.json",
+    "server": "./project1/server/package.json"
+  },
+  {
+    "name": "project2",
+    "frontend": "./project2/frontend/package.json",
+    "server": "./project2/server/package.json"
+  }
+] 
