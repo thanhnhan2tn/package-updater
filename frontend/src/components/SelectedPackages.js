@@ -15,6 +15,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { usePackageContext } from '../context/PackageContext';
 
+// Package list item component
 const PackageListItem = ({ pkg, onRemove, showRemove = true }) => (
   <ListItem>
     <ListItemText
@@ -53,9 +54,28 @@ const PackageListItem = ({ pkg, onRemove, showRemove = true }) => (
   </ListItem>
 );
 
+// Package list section component
+const PackageListSection = ({ title, packages, onRemove, showRemove }) => (
+  <>
+    <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+      {title} ({packages.length})
+    </Typography>
+    <List>
+      {packages.map((pkg) => (
+        <PackageListItem 
+          key={pkg.id} 
+          pkg={pkg}
+          onRemove={onRemove}
+          showRemove={showRemove}
+        />
+      ))}
+    </List>
+  </>
+);
+
+// Main component
 const SelectedPackages = () => {
   const { 
-    selectedPackages, 
     refreshingSelected, 
     refreshSelectedVersions, 
     removeFromSelection,
@@ -88,37 +108,22 @@ const SelectedPackages = () => {
       </Box>
 
       {followedPackagesInfo.length > 0 && (
-        <>
-          <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-            Followed Packages ({followedPackagesInfo.length})
-          </Typography>
-          <List>
-            {followedPackagesInfo.map((pkg) => (
-              <PackageListItem 
-                key={pkg.id} 
-                pkg={pkg}
-                showRemove={false}
-              />
-            ))}
-          </List>
-        </>
+        <PackageListSection 
+          title="Followed Packages"
+          packages={followedPackagesInfo}
+          showRemove={false}
+        />
       )}
 
       {selectedPackagesInfo.length > 0 && (
         <>
           {followedPackagesInfo.length > 0 && <Divider sx={{ my: 2 }} />}
-          <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-            Selected Packages ({selectedPackagesInfo.length})
-          </Typography>
-          <List>
-            {selectedPackagesInfo.map((pkg) => (
-              <PackageListItem 
-                key={pkg.id} 
-                pkg={pkg} 
-                onRemove={removeFromSelection}
-              />
-            ))}
-          </List>
+          <PackageListSection 
+            title="Selected Packages"
+            packages={selectedPackagesInfo}
+            onRemove={removeFromSelection}
+            showRemove={true}
+          />
         </>
       )}
     </Paper>

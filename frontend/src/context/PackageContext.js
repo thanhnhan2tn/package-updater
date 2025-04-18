@@ -2,8 +2,10 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import { fetchPackages, fetchPackageVersion } from '../services/api';
 import { packagesToFollow, packagesMetadata } from '../config/packagesToFollow';
 
+// Create context
 const PackageContext = createContext();
 
+// Custom hook for using the context
 export const usePackageContext = () => {
   const context = useContext(PackageContext);
   if (!context) {
@@ -13,6 +15,7 @@ export const usePackageContext = () => {
 };
 
 export const PackageProvider = ({ children }) => {
+  // State
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,7 +23,7 @@ export const PackageProvider = ({ children }) => {
   const [selectedPackages, setSelectedPackages] = useState([]);
   const [refreshingSelected, setRefreshingSelected] = useState(false);
 
-  // Load package version
+  // Load a single package version
   const loadPackageVersion = useCallback(async (id) => {
     try {
       setLoadingVersions(prev => ({ ...prev, [id]: true }));
@@ -36,21 +39,19 @@ export const PackageProvider = ({ children }) => {
     }
   }, []);
 
-  // Load all packages
+  // Load all packages and select followed packages
   const loadPackages = useCallback(async () => {
     try {
       setLoading(true);
       const data = await fetchPackages();
       setPackages(data);
       
-      // Find valid followed packages from the loaded data
+      // Select followed packages
       const validFollowedPackages = data
         .filter(pkg => packagesToFollow.includes(pkg.id))
         .map(pkg => pkg.id);
       
-      // Set selected packages to include followed packages
       setSelectedPackages(validFollowedPackages);
-      
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -65,25 +66,25 @@ export const PackageProvider = ({ children }) => {
     loadPackages();
   }, [loadPackages]);
 
-  // Load versions for followed packages when packages are loaded
+  // Load versions for followed packages
   useEffect(() => {
-    const loadFollowedPackagesVersions = async () => {
-      if (packages.length > 0) {
-        const validFollowedPackages = packages
-          .filter(pkg => packagesToFollow.includes(pkg.id))
-          .map(pkg => pkg.id);
-        
-        if (validFollowedPackages.length > 0) {
-          try {
-            await Promise.all(validFollowedPackages.map(id => loadPackageVersion(id)));
-          } catch (err) {
-            console.error('Error loading followed packages versions:', err);
-          }
+    const loadFollowedVersions = async () => {
+      if (packages.length === 0) return;
+      
+      const validFollowedPackages = packages
+        .filter(pkg => packagesToFollow.includes(pkg.id))
+        .map(pkg => pkg.id);
+      
+      if (validFollowedPackages.length > 0) {
+        try {
+          await Promise.all(validFollowedPackages.map(id => loadPackageVersion(id)));
+        } catch (err) {
+          console.error('Error loading followed packages versions:', err);
         }
       }
     };
 
-    loadFollowedPackagesVersions();
+    loadFollowedVersions();
   }, [packages, loadPackageVersion]);
 
   // Refresh a single package version
@@ -106,16 +107,13 @@ export const PackageProvider = ({ children }) => {
   // Toggle package selection
   const checkPackage = useCallback((id) => {
     // Skip if package is followed
-    if (packagesToFollow.includes(id)) {
-      return;
-    }
+    if (packagesToFollow.includes(id)) return;
 
-    setSelectedPackages(prev => {
-      if (prev.includes(id)) {
-        return prev.filter(pkgId => pkgId !== id);
-      }
-      return [...prev, id];
-    });
+    setSelectedPackages(prev => 
+      prev.includes(id) 
+        ? prev.filter(pkgId => pkgId !== id)
+        : [...prev, id]
+    );
   }, []);
 
   // Toggle all packages in a project
@@ -125,12 +123,11 @@ export const PackageProvider = ({ children }) => {
       .map(pkg => pkg.id)
       .filter(id => !packagesToFollow.includes(id));
     
-    setSelectedPackages(prev => {
-      if (checked) {
-        return [...new Set([...prev, ...projectPackages])];
-      }
-      return prev.filter(id => !projectPackages.includes(id));
-    });
+    setSelectedPackages(prev => 
+      checked
+        ? [...new Set([...prev, ...projectPackages])]
+        : prev.filter(id => !projectPackages.includes(id))
+    );
   }, [packages]);
 
   // Remove package from selection
@@ -148,33 +145,28 @@ export const PackageProvider = ({ children }) => {
 
   // Group packages by project
   const getPackagesByProject = useCallback(() => {
-    const grouped = packages.reduce((acc, pkg) => {
-      if (!acc[pkg.project]) {
-        acc[pkg.project] = [];
-      }
+    return packages.reduce((acc, pkg) => {
+      if (!acc[pkg.project]) acc[pkg.project] = [];
       acc[pkg.project].push(pkg);
       return acc;
     }, {});
-    return grouped;
   }, [packages]);
 
   // Get info for selected packages
   const getSelectedPackagesInfo = useCallback(() => {
-    return selectedPackages.map(id => {
-      const pkg = packages.find(p => p.id === id);
-      return pkg ? { ...pkg } : null;
-    }).filter(Boolean);
+    return selectedPackages
+      .map(id => packages.find(p => p.id === id))
+      .filter(Boolean);
   }, [selectedPackages, packages]);
 
   // Get info for followed packages
   const getFollowedPackagesInfo = useCallback(() => {
-    return packagesToFollow.map(id => {
-      const pkg = packages.find(p => p.id === id);
-      return pkg ? { 
-        ...pkg, 
-        metadata: packagesMetadata[id] || null 
-      } : null;
-    }).filter(Boolean);
+    return packagesToFollow
+      .map(id => {
+        const pkg = packages.find(p => p.id === id);
+        return pkg ? { ...pkg, metadata: packagesMetadata[id] || null } : null;
+      })
+      .filter(Boolean);
   }, [packages]);
 
   // Check if a package is followed
@@ -182,6 +174,7 @@ export const PackageProvider = ({ children }) => {
     return packagesToFollow.includes(id);
   }, []);
 
+  // Context value
   const value = {
     packages,
     loading,

@@ -6,16 +6,12 @@ import ProjectAccordion from './components/ProjectAccordion';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 
+// Package manager component
 const PackageManager = () => {
   const { loading, error, getPackagesByProject } = usePackageContext();
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  if (error) {
-    return <ErrorMessage message={error} />;
-  }
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message={error} />;
 
   const packagesByProject = getPackagesByProject();
 
@@ -38,12 +34,11 @@ const PackageManager = () => {
   );
 };
 
-function App() {
-  return (
-    <PackageProvider>
-      <PackageManager />
-    </PackageProvider>
-  );
-}
+// Main app component
+const App = () => (
+  <PackageProvider>
+    <PackageManager />
+  </PackageProvider>
+);
 
 export default App; 
