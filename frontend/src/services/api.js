@@ -1,4 +1,7 @@
 import config from '../config/api';
+import axios from 'axios';
+
+const API_URL = 'http://localhost:3001/api';
 
 /**
  * Generic fetch wrapper with error handling
@@ -56,4 +59,18 @@ export const upgradePackage = (projectName, packageInfo) => {
     method: 'POST',
     body: JSON.stringify({ projectName, packageInfo }),
   });
-}; 
+};
+
+/**
+ * Fetch all projects
+ * @returns {Promise<Array>} - List of projects
+ */
+export const fetchProjects = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/projects`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    throw error;
+  }
+};

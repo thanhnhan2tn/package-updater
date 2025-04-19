@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -18,11 +18,14 @@ import WarningIcon from '@mui/icons-material/Warning';
 import { usePackageContext } from '../context/PackageContext';
 import { usePackageOperations } from '../hooks/usePackageOperations';
 import { isMajorVersionUpgrade } from '../utils/versionUtils';
+import axios from 'axios';
 
 const SelectedPackagesPanel = () => {
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [upgradeComplete, setUpgradeComplete] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [dockerImages, setDockerImages] = useState([]);
+  const [loadingImages, setLoadingImages] = useState(false);
   
   const { 
     selectedPackages,
@@ -33,25 +36,68 @@ const SelectedPackagesPanel = () => {
   
   const { handleUpgradePackages } = usePackageOperations();
   
+  // Fetch Docker images when the component mounts
+  useEffect(() => {
+    const fetchDockerImages = async () => {
+      try {
+        setLoadingImages(true);
+        const response = await axios.get('http://localhost:3001/api/docker/images');
+        setDockerImages(response.data || []);
+      } catch (err) {
+        console.error('Error fetching Docker images:', err);
+      } finally {
+        setLoadingImages(false);
+      }
+    };
+    
+    fetchDockerImages();
+  }, []);
+  
   // Get the selected package objects
-  const selectedPackageObjects = selectedPackages.map(id => {
-    // Find the package in the current project
-    const allPackages = selectedProject ? packagesByProject[selectedProject] : [];
-    return allPackages.find(pkg => pkg.id === id);
-  }).filter(Boolean); // Filter out any undefined values
+  const selectedPackageObjects = useMemo(() => {
+    // First, get NPM packages from packagesByProject
+    const npmPackages = selectedPackages
+      .map(id => {
+        if (id.startsWith('pkg-')) {
+          // This is an NPM package
+          const allPackages = selectedProject && packagesByProject && packagesByProject[selectedProject] 
+            ? packagesByProject[selectedProject] 
+            : [];
+          return allPackages?.find(pkg => pkg.id === id);
+        }
+        return null;
+      })
+      .filter(Boolean); // Filter out any undefined values
+    
+    // Then, get Docker images
+    const dockerPackages = selectedPackages
+      .map(id => {
+        if (id.startsWith('docker-')) {
+          // This is a Docker image
+          return dockerImages.find(img => img.id === id);
+        }
+        return null;
+      })
+      .filter(Boolean);
+    
+    // Combine both types
+    return [...npmPackages, ...dockerPackages];
+  }, [selectedPackages, selectedProject, packagesByProject, dockerImages]);
 
   // Separate packages into those with major upgrades and those with minor/patch upgrades
-  const packagesWithMajorUpgrades = selectedPackageObjects.filter(pkg => 
-    pkg.latestVersion && 
-    pkg.currentVersion !== pkg.latestVersion && 
-    isMajorVersionUpgrade(pkg.currentVersion, pkg.latestVersion)
-  );
+  const packagesWithMajorUpgrades = useMemo(() => 
+    selectedPackageObjects.filter(pkg => 
+      pkg.latestVersion && 
+      pkg.currentVersion !== pkg.latestVersion && 
+      isMajorVersionUpgrade(pkg.currentVersion, pkg.latestVersion)
+    ), [selectedPackageObjects]);
   
-  const packagesWithSafeUpgrades = selectedPackageObjects.filter(pkg => 
-    pkg.latestVersion && 
-    pkg.currentVersion !== pkg.latestVersion && 
-    !isMajorVersionUpgrade(pkg.currentVersion, pkg.latestVersion)
-  );
+  const packagesWithSafeUpgrades = useMemo(() => 
+    selectedPackageObjects.filter(pkg => 
+      pkg.latestVersion && 
+      pkg.currentVersion !== pkg.latestVersion && 
+      !isMajorVersionUpgrade(pkg.currentVersion, pkg.latestVersion)
+    ), [selectedPackageObjects]);
 
   // Calculate the number of packages that need upgrading (excluding major version upgrades)
   const packagesNeedingUpgrade = packagesWithSafeUpgrades.length;
@@ -94,10 +140,39 @@ const SelectedPackagesPanel = () => {
     try {
       // Only upgrade packages that don't have major version changes
       const safePackageIds = packagesWithSafeUpgrades.map(pkg => pkg.id);
-      const result = await handleUpgradePackages(safePackageIds);
       
-      if (result.success) {
-        // Progress will be updated by the effect
+      // Separate NPM packages and Docker images
+      const npmPackageIds = safePackageIds.filter(id => id.startsWith('pkg-'));
+      const dockerImageIds = safePackageIds.filter(id => id.startsWith('docker-'));
+      
+      // Upgrade NPM packages
+      if (npmPackageIds.length > 0) {
+        const npmResult = await handleUpgradePackages(npmPackageIds);
+        console.log('NPM package upgrade result:', npmResult);
+      }
+      
+      // Upgrade Docker images
+      for (const dockerId of dockerImageIds) {
+        const dockerImage = dockerImages.find(img => img.id === dockerId);
+        if (dockerImage) {
+          try {
+            console.log(`Upgrading Docker image: ${dockerImage.imageName}`);
+            const response = await axios.post(`http://localhost:3001/api/docker/upgrade/${dockerImage.project}`, {
+              imageName: dockerImage.imageName,
+              latestVersion: dockerImage.latestVersion,
+              type: dockerImage.type
+            });
+            console.log('Docker image upgrade result:', response.data);
+          } catch (error) {
+            console.error(`Error upgrading Docker image ${dockerImage.id}:`, error);
+          }
+        }
+      }
+      
+      // Refresh Docker images after upgrade
+      if (dockerImageIds.length > 0) {
+        const response = await axios.get('http://localhost:3001/api/docker/images');
+        setDockerImages(response.data || []);
       }
     } catch (error) {
       console.error('Error upgrading packages:', error);
@@ -112,6 +187,28 @@ const SelectedPackagesPanel = () => {
   // If no packages are selected, don't render the panel
   if (selectedPackages.length === 0) {
     return null;
+  }
+  
+  // If still loading Docker images, show loading state
+  if (loadingImages) {
+    return (
+      <Paper
+        elevation={1}
+        sx={{
+          mb: 3,
+          p: 2,
+          borderRadius: 2,
+          backgroundColor: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}
+      >
+        <CircularProgress size={24} sx={{ mr: 2 }} />
+        <Typography variant="body2">Loading selected packages...</Typography>
+      </Paper>
+    );
   }
   
   return (
@@ -175,7 +272,7 @@ const SelectedPackagesPanel = () => {
               {packagesWithMajorUpgrades.map(pkg => (
                 <Chip
                   key={pkg.id}
-                  label={`${pkg.name}: ${pkg.currentVersion} → ${pkg.latestVersion}`}
+                  label={`${pkg.name || pkg.imageName}: ${pkg.currentVersion} → ${pkg.latestVersion}`}
                   size="small"
                   color="warning"
                   sx={{ 
@@ -226,6 +323,8 @@ const SelectedPackagesPanel = () => {
             const isPackageUpgrading = upgrading[pkg.id];
             const needsUpgrade = pkg.latestVersion && pkg.currentVersion !== pkg.latestVersion;
             const isMajorUpgrade = needsUpgrade && isMajorVersionUpgrade(pkg.currentVersion, pkg.latestVersion);
+            const isDockerImage = pkg.id.startsWith('docker-');
+            const displayName = isDockerImage ? pkg.imageName : pkg.name;
             
             return (
               <Tooltip 
@@ -236,7 +335,7 @@ const SelectedPackagesPanel = () => {
                        "Up to date"}
               >
                 <Chip
-                  label={`${pkg.name}@${pkg.currentVersion} → ${pkg.latestVersion || '?'}`}
+                  label={`${displayName}@${pkg.currentVersion} → ${pkg.latestVersion || '?'}`}
                   size="small"
                   sx={{ 
                     mb: 1,

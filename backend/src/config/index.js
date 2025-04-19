@@ -3,6 +3,11 @@ const path = require('path');
 /**
  * Application configuration
  */
+const packageManager = process.env.PACKAGE_MANAGER || 'npm';
+const installCmd = packageManager === 'yarn'
+  ? 'yarn install --mode update-lockfile'
+  : 'npm install --legacy-peer-deps --package-lock-only';
+
 const config = {
   // Server configuration
   server: {
@@ -18,8 +23,8 @@ const config = {
   
   // Package manager configuration
   packageManager: {
-    command: 'npm',
-    installCommand: 'npm install --legacy-peer-deps',
+    command: packageManager,
+    installCommand: installCmd,
   },
 };
 

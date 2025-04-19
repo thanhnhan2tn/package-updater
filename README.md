@@ -1,141 +1,152 @@
-# Dependency Version Checker
+# Check‑Update: Package & Docker Version Manager
 
-A tool to check and compare dependency versions across multiple React projects.
+ 
+![Tool Mockup](./mockup.png)
 
+ 
+A unified tool to track, compare, and upgrade both npm package dependencies and Docker image versions across multiple projects.
+
+ 
 ## Features
 
-- View all dependencies from multiple React projects
-- Compare current versions with latest available versions
-- Simple and clean UI
-- Real-time version checking
-- Support for both frontend and server dependencies
-- Multiple version checking methods (yarn info, GitHub releases, and custom URLs)
-- Configurable package mappings for custom version checking
+ 
+- View current vs. latest versions for npm packages and Docker images
+- Bulk-select updates with warnings for major version changes
+- Support for local and remote projects (auto‑clone from Git)
+- Clear UI with project list and dependency tabs
+- Semantic version comparison and safe upgrade flow
 
+ 
 ## Prerequisites
 
-- Node.js (v14 or higher)
-- npm or yarn
-- Chrome browser (for web scraping)
+ 
+- Node.js v14+ and npm or yarn
+- Git (for remote repository support)
 
+ 
 ## Installation
 
-1. Clone the repository:
+ 
+1. Clone this repository:
+
+ 
 ```bash
-git clone <repository-url>
-cd dependency-checker
+git clone <repo-url>
+cd check-update
 ```
 
-2. Install backend dependencies:
+ 
+2. Install dependencies:
+
+ 
 ```bash
-cd backend
-npm install
+cd backend && yarn install
+cd ../frontend && yarn install
 ```
 
-3. Install frontend dependencies:
-```bash
-cd ../frontend
-npm install
-```
-
+ 
 ## Configuration
 
-1. Create or modify `projects.json` in the root directory with your project information:
+ 
+Edit `projects.json` in the root directory to list your projects and optionally set which package manager to use via env var:
+
+ 
 ```json
 [
   {
     "name": "project1",
-    "frontend": "./project1/frontend/package.json",
-    "server": "./project1/server/package.json"
+    "path": "./project1",
+    "frontend": { "path": "./project1/frontend/package.json", "dockerfile": "./project1/frontend/Dockerfile" },
+    "server": { "path": "./project1/server/package.json", "dockerfile": "./project1/server/Dockerfile" }
   },
   {
-    "name": "project2",
-    "frontend": "./project2/frontend/package.json",
-    "server": "./project2/server/package.json"
+    "name": "project3",
+    "remote": "https://github.com/owner/repo.git",
+    "path": "./project3",
+    "frontend": { "path": "./project3/frontend/package.json" }
   }
 ]
 ```
 
-2. Configure package mappings in `backend/src/config/packageMappings.js`:
-```javascript
-const packageMappings = {
-  // Example for a package with a custom URL
-  'custom-package': {
-    url: 'https://custom-registry.com/package/custom-package',
-    selector: '.version-number',
-    regex: /version\s+(\d+\.\d+\.\d+)/i
-  },
-  
-  // Example for a package with a different GitHub organization
-  'org-package': {
-    url: 'https://github.com/different-org/package/releases',
-    selector: 'h1.release-title',
-    regex: /v(\d+\.\d+\.\d+)/
-  }
-};
+### Package Manager Quick-Update Flag
 
-module.exports = packageMappings;
+By default, the tool uses npm. To switch to Yarn, set:
+```bash
+export PACKAGE_MANAGER=yarn
 ```
+All installs will use lockfile-only flags:
+- npm: `npm install --package-lock-only`
+- Yarn: `yarn install --mode update-lockfile`
 
-## Version Checking Mechanism
+ 
+## Running the App
 
-The application uses multiple methods to check for the latest version of a package:
+ 
+1. Start backend on port 3001:
 
-1. **Yarn Info**: First, it tries to use `yarn info [package-name] version` to get the latest version.
-2. **Custom URL**: If yarn info fails and there's a custom mapping for the package, it tries to scrape the custom URL.
-3. **GitHub Releases**: If both previous methods fail, it falls back to scraping the GitHub releases page (e.g., https://github.com/axios/axios/releases).
-
-## Running the Application
-
-1. Start the backend server:
+ 
 ```bash
 cd backend
-npm start
+yarn start
 ```
 
-2. In a new terminal, start the frontend:
+ 
+2. Start frontend on port 3000:
+
+ 
 ```bash
-cd frontend
-npm start
+cd ../frontend
+yarn start
 ```
 
-3. Open your browser and navigate to `http://localhost:3000`
+ 
+3. Open [http://localhost:3000](http://localhost:3000) in your browser
 
+ 
 ## Usage
 
-- The application will automatically load all dependencies from the configured projects
-- Click the "Refresh" button to update the latest version information
-- Dependencies are displayed in a table format with the following information:
-  - Project name
-  - Package type (frontend/server)
-  - Dependency name
-  - Current version
-  - Latest version
+ 
+- Select a project from the sidebar
+- Switch between **NPM Packages** and **Docker Images** tabs
+- Search, filter, and checkbox-select items needing updates
+- Click **Apply Fix** to batch-upgrade safe updates
+- Major upgrades are flagged; proceed with caution
 
+ 
+## API Endpoints
+
+ 
+- `GET /api/projects` — list configured projects
+- `GET /api/packages` — get npm dependencies across projects
+- `POST /api/upgrade` — upgrade selected npm packages
+- `GET /api/docker/images` — list Docker images
+- `POST /api/docker/upgrade/:project` — upgrade Docker images for a project
+
+ 
 ## Project Structure
 
+ 
 ```
-dependency-checker/
-├── backend/
+check-update/
+├── backend/         # Express server (port 3001)
 │   ├── src/
-│   │   ├── index.js
-│   │   ├── config/
-│   │   │   └── packageMappings.js
-│   │   └── utils/
-│   │       └── versionChecker.js
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── App.js
+│   │   ├── controllers
+│   │   ├── services
+│   │   ├── routes
 │   │   └── index.js
 │   └── package.json
-└── projects.json
+├── frontend/        # React app (port 3000)
+│   ├── src/
+│   │   ├── components
+│   │   ├── context
+│   │   ├── hooks
+│   │   └── App.js
+│   └── package.json
+└── projects.json    # Your project configs
 ```
 
-## Notes
+ 
+## License
 
-- The tool assumes that all package.json files are accessible from the paths specified in projects.json
-- Make sure you have Chrome browser installed for the web scraping functionality
-- The tool does not store any historical data
-- Version checking is done in real-time when the refresh button is clicked
-- For packages with custom URLs, make sure to configure the correct selector and regex pattern 
+ 
+MIT

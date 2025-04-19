@@ -3,6 +3,8 @@ const fileService = require('./fileService');
 const projectService = require('./projectService');
 const commandService = require('./commandService');
 const { getLatestVersion } = require('../utils/versionChecker');
+const fs = require('fs').promises;
+const path = require('path');
 
 /**
  * Service for package operations
@@ -14,7 +16,20 @@ class PackageService {
    * @returns {Promise<Object|null>} - Package.json content or null if error
    */
   async readPackageJson(filePath) {
-    return fileService.readJsonFile(filePath);
+    try {
+      // First check if the file exists
+      try {
+        await fs.access(filePath);
+      } catch (error) {
+        Logger.warn(`Package.json file does not exist at path: ${filePath}`);
+        return null;
+      }
+      
+      return fileService.readJsonFile(filePath);
+    } catch (error) {
+      Logger.error(`Error reading package.json at ${filePath}`, error);
+      return null;
+    }
   }
 
   /**

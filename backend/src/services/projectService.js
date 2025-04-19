@@ -1,6 +1,12 @@
 const Logger = require('../utils/logger');
 const fileService = require('./fileService');
 const config = require('../config');
+const fs = require('fs').promises;
+const path = require('path');
+const { exec } = require('child_process');
+const util = require('util');
+
+const execPromise = util.promisify(exec);
 
 /**
  * Service for project operations
@@ -13,10 +19,84 @@ class ProjectService {
   async getProjects() {
     try {
       const projects = await fileService.readJsonFile(config.paths.projects);
+      
+      // Process any remote repositories
+      for (const project of projects || []) {
+        if (this.hasRemoteRepository(project)) {
+          await this.ensureProjectCloned(project);
+        }
+      }
+      
       return projects || [];
     } catch (error) {
       Logger.error('Error reading projects.json', error);
       return [];
+    }
+  }
+
+  /**
+   * Ensure a remote project is cloned to the local path
+   * @param {Object} project - Project object with remote repository
+   * @returns {Promise<boolean>} - True if successful, false otherwise
+   */
+  async ensureProjectCloned(project) {
+    if (!project.remote || !project.path) {
+      return false;
+    }
+
+    try {
+      const localPath = fileService.resolvePath(project.path);
+      
+      // Check if the directory exists
+      try {
+        await fs.access(localPath);
+        // Directory exists, check if it's a git repository
+        try {
+          await execPromise('git status', { cwd: localPath });
+          Logger.info(`Project ${project.name} already cloned at ${localPath}`);
+          
+          // Pull latest changes
+          Logger.info(`Pulling latest changes for ${project.name}`);
+          await execPromise('git pull', { cwd: localPath });
+          
+          return true;
+        } catch (gitError) {
+          // Not a git repository, remove it and clone
+          Logger.info(`Directory exists but is not a git repository: ${localPath}`);
+          await fs.rm(localPath, { recursive: true, force: true });
+        }
+      } catch (accessError) {
+        // Directory doesn't exist, create parent directory if needed
+        const parentDir = path.dirname(localPath);
+        try {
+          await fs.access(parentDir);
+        } catch (parentAccessError) {
+          await fs.mkdir(parentDir, { recursive: true });
+        }
+      }
+      
+      // Clone the repository
+      Logger.info(`Cloning repository ${project.remote} to ${localPath}`);
+      
+      // Use a timeout to prevent hanging on git clone
+      const clonePromise = new Promise(async (resolve, reject) => {
+        try {
+          const result = await execPromise(`git clone ${project.remote} ${localPath}`, {
+            timeout: 30000 // 30 seconds timeout
+          });
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      
+      await clonePromise;
+      
+      Logger.info(`Successfully cloned ${project.name} to ${localPath}`);
+      return true;
+    } catch (error) {
+      Logger.error(`Error ensuring project ${project.name} is cloned:`, error);
+      return false;
     }
   }
 
@@ -27,7 +107,13 @@ class ProjectService {
    */
   async getProjectByName(projectName) {
     const projects = await this.getProjects();
-    return projects.find(p => p.name === projectName) || null;
+    const project = projects.find(p => p.name === projectName) || null;
+    
+    if (project && this.hasRemoteRepository(project)) {
+      await this.ensureProjectCloned(project);
+    }
+    
+    return project;
   }
 
   /**
@@ -40,13 +126,48 @@ class ProjectService {
     if (!project) return null;
     
     if (type === 'frontend' && project.frontend) {
-      return fileService.resolvePath(project.frontend);
+      // Handle both old and new project structure
+      return fileService.resolvePath(
+        typeof project.frontend === 'string' ? project.frontend : project.frontend.path
+      );
     } else if (type === 'server' && project.server) {
-      return fileService.resolvePath(project.server);
+      // Handle both old and new project structure
+      return fileService.resolvePath(
+        typeof project.server === 'string' ? project.server : project.server.path
+      );
     }
     
     return null;
   }
+
+  /**
+   * Get Dockerfile path for a project
+   * @param {Object} project - Project object
+   * @param {string} type - Project type ('frontend' or 'server')
+   * @returns {string|null} - Path to Dockerfile or null if not available
+   */
+  getDockerfilePath(project, type) {
+    if (!project) return null;
+    
+    if (type === 'frontend' && project.frontend && 
+        typeof project.frontend === 'object' && project.frontend.dockerfile) {
+      return fileService.resolvePath(project.frontend.dockerfile);
+    } else if (type === 'server' && project.server && 
+               typeof project.server === 'object' && project.server.dockerfile) {
+      return fileService.resolvePath(project.server.dockerfile);
+    }
+    
+    return null;
+  }
+
+  /**
+   * Check if a project has a remote repository
+   * @param {Object} project - Project object
+   * @returns {boolean} - True if project has a remote repository
+   */
+  hasRemoteRepository(project) {
+    return project && project.remote && typeof project.remote === 'string';
+  }
 }
 
-module.exports = new ProjectService(); 
+module.exports = new ProjectService();

@@ -267,6 +267,7 @@ export const PackageProvider = ({ children }) => {
     
     // Actions
     setSelectedProject,
+    setSelectedPackages,
     loadPackages,
     loadPackageVersion,
     refreshVersion,

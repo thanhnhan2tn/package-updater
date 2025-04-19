@@ -3,6 +3,8 @@ const util = require('util');
 const execAsync = util.promisify(exec);
 const Logger = require('../utils/logger');
 const config = require('../config');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * Service for executing commands
@@ -40,7 +42,12 @@ class CommandService {
    * @returns {Promise<Object>} - Installation result
    */
   async installDependencies(directory) {
-    return this.executeCommand(config.packageManager.installCommand, directory);
+    // Determine package manager per project (Yarn if yarn.lock exists)
+    const lockFile = path.join(directory, 'yarn.lock');
+    const cmd = fs.existsSync(lockFile)
+      ? 'yarn install --mode update-lockfile'
+      : config.packageManager.installCommand;
+    return this.executeCommand(cmd, directory);
   }
 }
 

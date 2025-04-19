@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
   Button,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { usePackageContext } from '../context/PackageContext';
 import PackageTable from './PackageTable';
+import DockerImageTable from './DockerImageTable';
 
 const DependenciesPanel = () => {
   const { 
@@ -15,8 +18,17 @@ const DependenciesPanel = () => {
     refreshSelectedVersions,
     refreshingSelected
   } = usePackageContext();
+  
+  const [activeTab, setActiveTab] = useState(0);
 
-  const packages = selectedProject ? packagesByProject[selectedProject] : [];
+  // Safely handle the case when packagesByProject[selectedProject] might be undefined
+  const packages = selectedProject && packagesByProject && packagesByProject[selectedProject] 
+    ? packagesByProject[selectedProject] 
+    : [];
+  
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
 
   return (
     <>
@@ -48,23 +60,49 @@ const DependenciesPanel = () => {
           Refresh All
         </Button>
       </Box>
+      
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs 
+          value={activeTab} 
+          onChange={handleTabChange} 
+          aria-label="dependency tabs"
+          sx={{
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#0F172A',
+            },
+            '& .Mui-selected': {
+              color: '#0F172A !important',
+              fontWeight: 600,
+            },
+          }}
+        >
+          <Tab label="NPM Packages" />
+          <Tab label="Docker Images" />
+        </Tabs>
+      </Box>
 
       <Box sx={{ p: 2, flex: 1 }}>
-        {selectedProject && packages.length > 0 ? (
-          <PackageTable packages={packages} />
-        ) : (
-          <Box
-            sx={{
-              height: '50vh',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Typography color="text.secondary">
-              No dependencies found
-            </Typography>
-          </Box>
+        {activeTab === 0 && (
+          selectedProject && packages && packages.length > 0 ? (
+            <PackageTable packages={packages} />
+          ) : (
+            <Box
+              sx={{
+                height: '50vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Typography color="text.secondary">
+                {selectedProject ? "No NPM packages found for this project" : "No project selected"}
+              </Typography>
+            </Box>
+          )
+        )}
+        
+        {activeTab === 1 && (
+          <DockerImageTable />
         )}
       </Box>
     </>

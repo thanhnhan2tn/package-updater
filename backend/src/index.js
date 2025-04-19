@@ -7,6 +7,8 @@ const packageService = require('./services/packageService');
 const Logger = require('./utils/logger');
 const config = require('./config');
 const packageRoutes = require('./routes/packageRoutes');
+const dockerRoutes = require('./routes/dockerRoutes');
+const projectRoutes = require('./routes/projectRoutes');
 
 const app = express();
 const PORT = config.server.port;
@@ -111,6 +113,8 @@ async function getAllPackages() {
 
 // Routes
 app.use('/api', packageRoutes);
+app.use('/api/docker', dockerRoutes);
+app.use('/api', projectRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
