@@ -23,6 +23,7 @@ export const PackageProvider = ({ children }) => {
   const [selectedPackages, setSelectedPackages] = useState([]);
   const [refreshingSelected, setRefreshingSelected] = useState(false);
   const [upgrading, setUpgrading] = useState({});
+  const [selectedProject, setSelectedProject] = useState(null);
 
   // Load a single package version
   const loadPackageVersion = useCallback(async (id) => {
@@ -54,6 +55,12 @@ export const PackageProvider = ({ children }) => {
         .map(pkg => pkg.id);
       
       setSelectedPackages(validFollowedPackages);
+
+      // Select first project by default
+      const projects = [...new Set(data.map(pkg => pkg.project))];
+      if (projects.length > 0) {
+        setSelectedProject(projects[0]);
+      }
     } catch (err) {
       setError(err.message || 'Failed to load packages');
       console.error('Error fetching packages:', err);
@@ -207,13 +214,10 @@ export const PackageProvider = ({ children }) => {
     selectedPackages,
     refreshingSelected,
     upgrading,
-    
-    // Computed values
-    packagesByProject,
-    selectedPackagesInfo,
-    followedPackagesInfo,
+    selectedProject,
     
     // Actions
+    setSelectedProject,
     loadPackages,
     loadPackageVersion,
     refreshVersion,
@@ -223,7 +227,12 @@ export const PackageProvider = ({ children }) => {
     removeFromSelection,
     getVersionStatus,
     isPackageFollowed,
-    upgradePackage
+    upgradePackage,
+    
+    // Computed values
+    packagesByProject,
+    selectedPackagesInfo,
+    followedPackagesInfo,
   };
 
   return (

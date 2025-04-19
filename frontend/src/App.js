@@ -1,8 +1,9 @@
 import React from 'react';
-import { Container, Typography, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { PackageProvider, usePackageContext } from './context/PackageContext';
-import SelectedPackages from './components/SelectedPackages';
-import ProjectAccordion from './components/ProjectAccordion';
+import Layout from './components/Layout';
+import ProjectList from './components/ProjectList';
+import DependenciesPanel from './components/DependenciesPanel';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 
@@ -15,9 +16,15 @@ const theme = createTheme({
     secondary: {
       main: '#dc004e',
     },
+    background: {
+      default: '#f5f5f5',
+    },
   },
   typography: {
     h4: {
+      fontWeight: 600,
+    },
+    h5: {
       fontWeight: 600,
     },
     h6: {
@@ -25,10 +32,18 @@ const theme = createTheme({
     },
   },
   components: {
-    MuiAccordion: {
+    MuiButton: {
       styleOverrides: {
         root: {
-          marginBottom: 8,
+          textTransform: 'none',
+          borderRadius: 8,
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 16,
         },
       },
     },
@@ -37,27 +52,16 @@ const theme = createTheme({
 
 // Package manager component
 const PackageManager = () => {
-  const { loading, error, packagesByProject } = usePackageContext();
+  const { loading, error } = usePackageContext();
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error} />;
 
   return (
-    <Container sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Package Dependencies
-      </Typography>
-
-      <SelectedPackages />
-
-      {Object.entries(packagesByProject).map(([project, projectPackages]) => (
-        <ProjectAccordion 
-          key={project} 
-          project={project} 
-          packages={projectPackages} 
-        />
-      ))}
-    </Container>
+    <Layout
+      projectsPanel={<ProjectList />}
+      dependenciesPanel={<DependenciesPanel />}
+    />
   );
 };
 
