@@ -1,13 +1,14 @@
-# Stage 1: Build Frontend
-FROM 1:slim AS builder
-WORKDIR /app
-COPY package.json yarn.lock ./
-RUN npm install --legacy-peer-deps
-COPY . .
-RUN npm run build
+FROM debian:latest
 
-# Stage 2: Serve Frontend
-FROM nginx:alpine
-COPY --from=builder /app/build /usr/share/nginx/html
+# Dockerfile Maintainer
+MAINTAINER Jan Wagner "waja@cyconet.org"
+
+# Install nginx and adjust nginx config to stay in foreground
+RUN apt-get update && apt-get install --no-install-recommends -y nginx; \
+ echo "daemon off;" >> /etc/nginx/nginx.conf
+
+# Expose HTTP
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+
+# Start nginx
+CMD ["/usr/sbin/nginx"]

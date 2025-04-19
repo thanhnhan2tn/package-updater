@@ -1,14 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchDockerImages, checkDockerImageVersion } from '../services/dockerService';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import { usePackageContext } from '../context/PackageContext';
-import { isMajorVersionUpgrade } from '../utils/versionUtils';
-
-// Removed obsolete stylesheet import
 
 // Import common components
 import {
-  CommonChip,
   CommonTable,
   CommonTableContainer,
   CommonTableHead,
@@ -16,13 +11,10 @@ import {
   CommonTableRow,
   CommonTableCell,
   CommonSectionHeader,
-  CommonCheckbox,
-  CommonIconButton,
-  CommonFilter,
   LoadingContainer,
-  VersionStatusIndicator,
   EmptyState
 } from './common';
+import PackageRow from './PackageRow';
 
 // Filter constants
 const FILTER_ALL = 'all';
@@ -59,11 +51,13 @@ const DockerImageTable = () => {
   
   // trigger version check on demand
   const checkVersion = async (imageId) => {
-    const cleanId = imageId.startsWith('docker-') ? imageId.replace(/^docker-/, '') : imageId;
+    const img = dockerImages.find(i => i.id === imageId);
+    if (!img) return;
+    const { project: projectName, type } = img;
     try {
       setLoadingVersions(prev => ({ ...prev, [imageId]: true }));
-      const updated = await checkDockerImageVersion(cleanId);
-      setDockerImages(imgs => imgs.map(img => img.id === imageId ? { ...img, latestVersion: updated.latestVersion } : img));
+      const updated = await checkDockerImageVersion(projectName, type);
+      setDockerImages(imgs => imgs.map(i => i.id === imageId ? { ...i, latestVersion: updated.latestVersion } : i));
     } catch (e) {
       console.error(`Version check failed for ${imageId}:`, e);
     } finally {
@@ -76,24 +70,22 @@ const DockerImageTable = () => {
     dockerImages.filter(img => !selectedProject || img.project === selectedProject)
   , [dockerImages, selectedProject]);
 
-  // Handle image selection
+  // Handle image selection, trigger version fetch when adding
   const handleSelectImage = (imageId) => {
-    // Add 'docker-' prefix if not already present
     const prefixedId = imageId.startsWith('docker-') ? imageId : `docker-${imageId}`;
-    
-    setSelectedImages(prev => {
-      if (prev.includes(prefixedId)) {
-        // Remove from selection
-        const updated = prev.filter(id => id !== prefixedId);
-        setSelectedPackages(updated);
-        return updated;
-      } else {
-        // Add to selection
-        const updated = [...prev, prefixedId];
-        setSelectedPackages(updated);
-        return updated;
-      }
-    });
+    let updated;
+    if (selectedImages.includes(prefixedId)) {
+      updated = selectedImages.filter(id => id !== prefixedId);
+    } else {
+      updated = [...selectedImages, prefixedId];
+    }
+    setSelectedImages(updated);
+    setSelectedPackages(updated);
+    // if added, fetch latestVersion on demand
+    if (!selectedImages.includes(prefixedId)) {
+      const img = dockerImages.find(i => i.id === imageId);
+      if (img && !img.latestVersion) checkVersion(imageId);
+    }
   };
   
   // Section filters
@@ -155,52 +147,19 @@ const DockerImageTable = () => {
               </CommonTableRow>
               
               {filteredFrontendImages.map(image => (
-                <CommonTableRow key={image.id} hover>
-                  <CommonTableCell padding="checkbox">
-                    {image.currentVersion !== image.latestVersion && (
-                      <CommonCheckbox
-                        checked={selectedImages.includes(image.id.startsWith('docker-') ? image.id : `docker-${image.id}`)}
-                        onChange={() => handleSelectImage(image.id)}
-                        aria-labelledby={`image-${image.id}`}
-                      />
-                    )}
-                  </CommonTableCell>
-                  <CommonTableCell>{image.project}</CommonTableCell>
-                  <CommonTableCell>
-                    <CommonChip 
-                      label={image.type} 
-                      size="small"
-                      customStyles={{ 
-                        backgroundColor: '#e0f2fe',
-                        color: '#0369a1',
-                        fontWeight: 500
-                      }}
-                    />
-                  </CommonTableCell>
-                  <CommonTableCell className="monospace-text">{image.imageName}</CommonTableCell>
-                  <CommonTableCell className="monospace-text">{image.currentVersion}</CommonTableCell>
-                  <CommonTableCell>
-                    {loadingVersions[image.id] ? (
-                      <div className="loading-cell">Loading...</div>
-                    ) : image.latestVersion ? (
-                      <span className="monospace-text">{image.latestVersion}</span>
-                    ) : (
-                      <CommonIconButton
-                        size="small"
-                        icon={<RefreshIcon fontSize="small" />}
-                        onClick={() => checkVersion(image.id)}
-                        title="Check version"
-                      />
-                    )}
-                  </CommonTableCell>
-                  <CommonTableCell>
-                    <VersionStatusIndicator
-                      currentVersion={image.currentVersion}
-                      latestVersion={image.latestVersion}
-                      isMajorUpgrade={isMajorVersionUpgrade(image.currentVersion, image.latestVersion)}
-                    />
-                  </CommonTableCell>
-                </CommonTableRow>
+                <PackageRow
+                  key={image.id}
+                  pkg={{ ...image, name: image.imageName }}
+                  selectedPackages={selectedImages}
+                  onSelect={handleSelectImage}
+                  loadingVersions={loadingVersions}
+                  onRefresh={checkVersion}
+                  getVersionStatus={() => {}}
+                  onCheckVersion={checkVersion}
+                  isPackageFollowed={() => false}
+                  isPrioritized={false}
+                  upgrading={{}}
+                />
               ))}
             </>
           ) : (
@@ -223,52 +182,19 @@ const DockerImageTable = () => {
               </CommonTableRow>
               
               {filteredServerImages.map(image => (
-                <CommonTableRow key={image.id} hover>
-                  <CommonTableCell padding="checkbox">
-                    {image.currentVersion !== image.latestVersion && (
-                      <CommonCheckbox
-                        checked={selectedImages.includes(image.id.startsWith('docker-') ? image.id : `docker-${image.id}`)}
-                        onChange={() => handleSelectImage(image.id)}
-                        aria-labelledby={`image-${image.id}`}
-                      />
-                    )}
-                  </CommonTableCell>
-                  <CommonTableCell>{image.project}</CommonTableCell>
-                  <CommonTableCell>
-                    <CommonChip 
-                      label={image.type} 
-                      size="small"
-                      customStyles={{ 
-                        backgroundColor: '#f0fdf4',
-                        color: '#166534',
-                        fontWeight: 500
-                      }}
-                    />
-                  </CommonTableCell>
-                  <CommonTableCell className="monospace-text">{image.imageName}</CommonTableCell>
-                  <CommonTableCell className="monospace-text">{image.currentVersion}</CommonTableCell>
-                  <CommonTableCell>
-                    {loadingVersions[image.id] ? (
-                      <div className="loading-cell">Loading...</div>
-                    ) : image.latestVersion ? (
-                      <span className="monospace-text">{image.latestVersion}</span>
-                    ) : (
-                      <CommonIconButton
-                        size="small"
-                        icon={<RefreshIcon fontSize="small" />}
-                        onClick={() => checkVersion(image.id)}
-                        title="Check version"
-                      />
-                    )}
-                  </CommonTableCell>
-                  <CommonTableCell>
-                    <VersionStatusIndicator
-                      currentVersion={image.currentVersion}
-                      latestVersion={image.latestVersion}
-                      isMajorUpgrade={isMajorVersionUpgrade(image.currentVersion, image.latestVersion)}
-                    />
-                  </CommonTableCell>
-                </CommonTableRow>
+                <PackageRow
+                  key={image.id}
+                  pkg={{ ...image, name: image.imageName }}
+                  selectedPackages={selectedImages}
+                  onSelect={handleSelectImage}
+                  loadingVersions={loadingVersions}
+                  onRefresh={checkVersion}
+                  getVersionStatus={() => {}}
+                  onCheckVersion={checkVersion}
+                  isPackageFollowed={() => false}
+                  isPrioritized={false}
+                  upgrading={{}}
+                />
               ))}
             </>
           ) : (

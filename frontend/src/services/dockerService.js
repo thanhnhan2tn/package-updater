@@ -12,10 +12,13 @@ export const fetchDockerImages = async () => {
 };
 
 /**
- * Check version for a specific Docker image by ID
+ * Get latest version for a Docker image
+ * @param {string} projectName - Name of the project
+ * @param {string} type - Image type ('frontend' or 'server')
  */
-export const checkDockerImageVersion = async (imageId) => {
-  const response = await axios.get(`${IMAGES_URL}/${imageId}/version`);
+export const checkDockerImageVersion = async (projectName, type) => {
+  // Fetch Docker image info including latestVersion
+  const response = await axios.get(`${DOCKER_API_URL}/image/${projectName}/${type}`);
   return response.data;
 };
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Paper } from '@mui/material';
-import { checkDockerImageVersion, upgradeDockerImage } from '../../services/dockerService';
 import axios from 'axios';
+import { checkDockerImageVersion, upgradeDockerImage } from '../../services/dockerService';
 import { usePackageContext } from '../../context/PackageContext';
 import { usePackageOperations } from '../../hooks/usePackageOperations';
 import { isMajorVersionUpgrade } from '../../utils/versionUtils';
@@ -11,7 +11,6 @@ import UpgradeProgress from './UpgradeProgress';
 import PackageChips from './PackageChips';
 
 const SelectedPackagesPanel = () => {
-  // State hooks
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dockerImages, setDockerImages] = useState([]);
@@ -19,7 +18,6 @@ const SelectedPackagesPanel = () => {
   const { selectedPackages, packagesByProject, selectedProject, upgrading } = usePackageContext();
   const { handleUpgradePackages } = usePackageOperations();
 
-  // Fetch Docker images
   useEffect(() => {
     const fetchDockerImages = async () => {
       try {
@@ -32,11 +30,10 @@ const SelectedPackagesPanel = () => {
     fetchDockerImages();
   }, []);
 
-  // Compose selected package objects
   const selectedPackageObjects = useMemo(() => {
     const npm = selectedPackages.map(id => {
       if (id.startsWith('pkg-')) {
-        const all = selectedProject && packagesByProject[selectedProject] ? packagesByProject[selectedProject] : [];
+        const all = (selectedProject && packagesByProject[selectedProject]) || [];
         return all.find(p => p.id === id);
       }
       return null;
@@ -45,20 +42,38 @@ const SelectedPackagesPanel = () => {
     return [...npm, ...docker];
   }, [selectedPackages, selectedProject, packagesByProject, dockerImages]);
 
-  // Split upgrades
+  useEffect(() => {
+    selectedPackageObjects
+      .filter(p => p.id.startsWith('docker-') && !p.latestVersion)
+      .forEach(async pkg => {
+        try {
+          const updated = await checkDockerImageVersion(selectedProject, pkg.type);
+          setDockerImages(imgs => imgs.map(img => img.id === pkg.id ? { ...img, latestVersion: updated.latestVersion } : img));
+        } catch (e) {
+          console.error('Error fetching Docker version for', pkg.id, e);
+        }
+      });
+  }, [selectedPackageObjects, selectedProject]);
+
   const safeUpgrades = selectedPackageObjects.filter(p => p.latestVersion && p.currentVersion !== p.latestVersion && !isMajorVersionUpgrade(p.currentVersion, p.latestVersion));
   const majorUpgrades = selectedPackageObjects.filter(p => p.latestVersion && p.currentVersion !== p.latestVersion && isMajorVersionUpgrade(p.currentVersion, p.latestVersion));
 
-  // Handle combined upgrade for npm and Docker
   const handleApplyFix = async () => {
     setIsUpgrading(true);
-    // NPM upgrades
     const npmIds = safeUpgrades.filter(p => p.id.startsWith('pkg-')).map(p => p.id);
     if (npmIds.length) {
       try { await handleUpgradePackages(npmIds); } catch (e) { console.error(e); }
     }
-    // Docker upgrades
-    for (const pkg of safeUpgrades.filter(p => p.id.startsWith('docker-'))) {
+    const dockerPkgs = selectedPackageObjects.filter(p => p.id.startsWith('docker-'));
+    for (let pkg of dockerPkgs) {
+      if (!pkg.latestVersion) {
+        const updated = await checkDockerImageVersion(selectedProject, pkg.type);
+        pkg.latestVersion = updated.latestVersion;
+        setDockerImages(imgs => imgs.map(img => img.id === pkg.id ? { ...img, latestVersion: updated.latestVersion } : img));
+      }
+    }
+    const safeDocker = dockerPkgs.filter(p => p.latestVersion && p.currentVersion !== p.latestVersion && !isMajorVersionUpgrade(p.currentVersion, p.latestVersion));
+    for (const pkg of safeDocker) {
       const rawId = pkg.id.replace(/^docker-/, '');
       try {
         await upgradeDockerImage(selectedProject, {
@@ -66,7 +81,7 @@ const SelectedPackagesPanel = () => {
           latestVersion: pkg.latestVersion,
           type: pkg.type
         });
-        const updated = await checkDockerImageVersion(rawId);
+        const updated = await checkDockerImageVersion(selectedProject, pkg.type);
         setDockerImages(imgs => imgs.map(img => img.id === pkg.id ? { ...img, latestVersion: updated.latestVersion } : img));
       } catch (e) {
         console.error('Docker upgrade failed for', rawId, e);
@@ -75,7 +90,6 @@ const SelectedPackagesPanel = () => {
     setIsUpgrading(false);
   };
 
-  // Progress tracking
   useEffect(() => {
     const total = safeUpgrades.length;
     if (!total) return;

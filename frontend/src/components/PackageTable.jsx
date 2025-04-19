@@ -5,7 +5,6 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
   CircularProgress,
   IconButton,
   Chip,
@@ -27,6 +26,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import { usePackageContext } from '../context/PackageContext';
 import { usePackageOperations } from '../hooks/usePackageOperations';
 import { isMajorVersionUpgrade } from '../utils/versionUtils';
+import { CommonTableRow } from './common';
 
 // Filter options
 const FILTER_ALL = 'all';
@@ -135,7 +135,7 @@ const PackageRow = React.memo(({ pkg, selectedPackages, onSelect, loadingVersion
   const isFollowed = isPackageFollowed(pkg.id);
   
   return (
-    <TableRow 
+    <CommonTableRow 
       key={pkg.id}
       sx={{
         ...isFollowed ? { backgroundColor: 'action.hover' } : undefined,
@@ -212,7 +212,7 @@ const PackageRow = React.memo(({ pkg, selectedPackages, onSelect, loadingVersion
           upgrading={upgrading} 
         />
       </TableCell>
-    </TableRow>
+    </CommonTableRow>
   );
 });
 
@@ -444,7 +444,7 @@ const PackageTable = React.memo(({ packages }) => {
       if (otherPackages[type] && otherPackages[type].length > 0) {
         // Add section header
         rows.push(
-          <TableRow key={`${type}-header`}>
+          <CommonTableRow key={`${type}-header`}>
             <TableCell 
               colSpan={7} 
               sx={{ 
@@ -455,7 +455,7 @@ const PackageTable = React.memo(({ packages }) => {
             >
               {type.charAt(0).toUpperCase() + type.slice(1)} Dependencies ({otherPackages[type].length})
             </TableCell>
-          </TableRow>
+          </CommonTableRow>
         );
         
         // Add package rows
@@ -504,7 +504,7 @@ const PackageTable = React.memo(({ packages }) => {
           } 
         }}>
           <TableHead>
-            <TableRow>
+            <CommonTableRow>
               <TableCell colSpan={7} sx={{ p: 0, border: 'none' }}>
                 {/* Frontend Section Filter */}
                 {packagesByType.frontend && packagesByType.frontend.length > 0 && (
@@ -517,36 +517,36 @@ const PackageTable = React.memo(({ packages }) => {
                   </Box>
                 )}
               </TableCell>
-            </TableRow>
+            </CommonTableRow>
           </TableHead>
           <TableBody>
             {/* Frontend Section */}
             {packagesByType.frontend && packagesByType.frontend.length > 0 && (
               <>
-                <TableRow>
+                <CommonTableRow>
                   <SectionHeader 
                     title="Frontend Dependencies" 
                     count={filteredFrontendPackages.length} 
                     color="primary.main"
                   />
-                </TableRow>
+                </CommonTableRow>
                 {frontendRows.length > 0 ? (
                   frontendRows
                 ) : (
-                  <TableRow>
+                  <CommonTableRow>
                     <TableCell colSpan={7} align="center" sx={{ py: 2 }}>
                       <Typography color="text.secondary">
                         No frontend packages match the current filter
                       </Typography>
                     </TableCell>
-                  </TableRow>
+                  </CommonTableRow>
                 )}
               </>
             )}
           </TableBody>
           
           <TableHead>
-            <TableRow>
+            <CommonTableRow>
               <TableCell colSpan={7} sx={{ p: 0, border: 'none' }}>
                 {/* Server Section Filter */}
                 {packagesByType.server && packagesByType.server.length > 0 && (
@@ -559,29 +559,29 @@ const PackageTable = React.memo(({ packages }) => {
                   </Box>
                 )}
               </TableCell>
-            </TableRow>
+            </CommonTableRow>
           </TableHead>
           <TableBody>
             {/* Server Section */}
             {packagesByType.server && packagesByType.server.length > 0 && (
               <>
-                <TableRow>
+                <CommonTableRow>
                   <SectionHeader 
                     title="Server Dependencies" 
                     count={filteredServerPackages.length} 
                     color="secondary.main"
                   />
-                </TableRow>
+                </CommonTableRow>
                 {serverRows.length > 0 ? (
                   serverRows
                 ) : (
-                  <TableRow>
+                  <CommonTableRow>
                     <TableCell colSpan={7} align="center" sx={{ py: 2 }}>
                       <Typography color="text.secondary">
                         No server packages match the current filter
                       </Typography>
                     </TableCell>
-                  </TableRow>
+                  </CommonTableRow>
                 )}
               </>
             )}
@@ -591,13 +591,13 @@ const PackageTable = React.memo(({ packages }) => {
             
             {/* No packages message */}
             {!packagesByType.frontend && !packagesByType.server && Object.keys(otherPackages).length === 0 && (
-              <TableRow>
+              <CommonTableRow>
                 <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
                   <Typography color="text.secondary">
                     No packages found
                   </Typography>
                 </TableCell>
-              </TableRow>
+              </CommonTableRow>
             )}
           </TableBody>
         </Table>
