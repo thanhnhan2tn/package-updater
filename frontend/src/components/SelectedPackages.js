@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Paper,
   Typography,
@@ -9,14 +9,16 @@ import {
   ListItemText,
   IconButton,
   Divider,
-  Chip
+  Chip,
+  CircularProgress
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { usePackageContext } from '../context/PackageContext';
+import { usePackageOperations } from '../hooks/usePackageOperations';
 
 // Package list item component
-const PackageListItem = ({ pkg, onRemove, onUpgrade, showRemove = true }) => (
+const PackageListItem = React.memo(({ pkg, onRemove, onUpgrade, showRemove = true, upgrading }) => (
   <ListItem>
     <ListItemText
       primary={
@@ -46,9 +48,13 @@ const PackageListItem = ({ pkg, onRemove, onUpgrade, showRemove = true }) => (
             variant="outlined"
             color="primary"
             onClick={() => onUpgrade(pkg)}
-            disabled={pkg.currentVersion === pkg.latestVersion}
+            disabled={pkg.currentVersion === pkg.latestVersion || upgrading[pkg.id]}
           >
-            Apply Fix
+            {upgrading[pkg.id] ? (
+              <CircularProgress size={16} />
+            ) : (
+              'Apply Fix'
+            )}
           </Button>
         </>
       )}
@@ -63,10 +69,10 @@ const PackageListItem = ({ pkg, onRemove, onUpgrade, showRemove = true }) => (
       )}
     </Box>
   </ListItem>
-);
+));
 
 // Package list section component
-const PackageListSection = ({ title, packages, onRemove, onUpgrade, showRemove }) => (
+const PackageListSection = React.memo(({ title, packages, onRemove, onUpgrade, showRemove, upgrading }) => (
   <>
     <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
       {title} ({packages.length})
@@ -79,44 +85,30 @@ const PackageListSection = ({ title, packages, onRemove, onUpgrade, showRemove }
           onRemove={onRemove}
           onUpgrade={onUpgrade}
           showRemove={showRemove}
+          upgrading={upgrading}
         />
       ))}
     </List>
   </>
-);
+));
 
 // Main component
 const SelectedPackages = () => {
   const { 
     refreshingSelected, 
     refreshSelectedVersions, 
-    removeFromSelection,
-    getSelectedPackagesInfo,
-    getFollowedPackagesInfo,
-    upgradePackage
+    selectedPackagesInfo,
+    followedPackagesInfo,
+    upgrading
   } = usePackageContext();
+  
+  const { handleUpgrade, handleRemove } = usePackageOperations();
 
-  const [upgrading, setUpgrading] = useState({});
-
-  const handleUpgrade = async (pkg) => {
-    try {
-      setUpgrading(prev => ({ ...prev, [pkg.id]: true }));
-      const result = await upgradePackage(pkg);
-      console.log('Package upgraded:', result);
-      // Optionally show a success message
-    } catch (error) {
-      console.error('Error upgrading package:', error);
-      // Optionally show an error message
-    } finally {
-      setUpgrading(prev => ({ ...prev, [pkg.id]: false }));
-    }
-  };
-
-  const followedPackagesInfo = getFollowedPackagesInfo();
-  const selectedPackagesInfo = getSelectedPackagesInfo()
+  // Filter out followed packages from selected packages
+  const filteredSelectedPackages = selectedPackagesInfo
     .filter(pkg => !followedPackagesInfo.some(f => f.id === pkg.id));
 
-  if (followedPackagesInfo.length === 0 && selectedPackagesInfo.length === 0) {
+  if (followedPackagesInfo.length === 0 && filteredSelectedPackages.length === 0) {
     return null;
   }
 
@@ -142,18 +134,20 @@ const SelectedPackages = () => {
           packages={followedPackagesInfo}
           onUpgrade={handleUpgrade}
           showRemove={false}
+          upgrading={upgrading}
         />
       )}
 
-      {selectedPackagesInfo.length > 0 && (
+      {filteredSelectedPackages.length > 0 && (
         <>
           {followedPackagesInfo.length > 0 && <Divider sx={{ my: 2 }} />}
           <PackageListSection 
             title="Selected Packages"
-            packages={selectedPackagesInfo}
-            onRemove={removeFromSelection}
+            packages={filteredSelectedPackages}
+            onRemove={handleRemove}
             onUpgrade={handleUpgrade}
             showRemove={true}
+            upgrading={upgrading}
           />
         </>
       )}

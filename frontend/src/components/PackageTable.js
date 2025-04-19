@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -18,9 +18,10 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import StarIcon from '@mui/icons-material/Star';
 import { usePackageContext } from '../context/PackageContext';
+import { usePackageOperations } from '../hooks/usePackageOperations';
 
 // Table header component
-const TableHeader = () => (
+const TableHeader = React.memo(() => (
   <TableHead>
     <TableRow>
       <TableCell padding="checkbox" />
@@ -32,10 +33,10 @@ const TableHeader = () => (
       <TableCell>Actions</TableCell>
     </TableRow>
   </TableHead>
-);
+));
 
 // Version cell component
-const VersionCell = ({ pkg, loadingVersions, loadPackageVersion }) => {
+const VersionCell = React.memo(({ pkg, loadingVersions, onCheckVersion }) => {
   if (loadingVersions[pkg.id]) {
     return <CircularProgress size={20} />;
   }
@@ -47,16 +48,16 @@ const VersionCell = ({ pkg, loadingVersions, loadPackageVersion }) => {
   return (
     <IconButton 
       size="small" 
-      onClick={() => loadPackageVersion(pkg.id)}
+      onClick={() => onCheckVersion(pkg.id)}
       title="Check version"
     >
       <RefreshIcon />
     </IconButton>
   );
-};
+});
 
 // Status cell component
-const StatusCell = ({ pkg, getVersionStatus }) => {
+const StatusCell = React.memo(({ pkg, getVersionStatus }) => {
   if (!pkg.latestVersion) return null;
   
   const status = getVersionStatus(pkg.currentVersion, pkg.latestVersion);
@@ -74,25 +75,25 @@ const StatusCell = ({ pkg, getVersionStatus }) => {
       )}
     </Box>
   );
-};
+});
 
 // Actions cell component
-const ActionsCell = ({ pkg, refreshVersion }) => {
+const ActionsCell = React.memo(({ pkg, onRefresh }) => {
   if (!pkg.latestVersion) return null;
   
   return (
     <IconButton 
       size="small" 
-      onClick={() => refreshVersion(pkg.id)}
+      onClick={() => onRefresh(pkg.id)}
       title="Refresh version"
     >
       <RefreshIcon />
     </IconButton>
   );
-};
+});
 
 // Package row component
-const PackageRow = ({ pkg, selectedPackages, checkPackage, loadingVersions, refreshVersion, getVersionStatus, loadPackageVersion, isPackageFollowed }) => {
+const PackageRow = React.memo(({ pkg, selectedPackages, onSelect, loadingVersions, onRefresh, getVersionStatus, onCheckVersion, isPackageFollowed }) => {
   const isFollowed = isPackageFollowed(pkg.id);
   
   return (
@@ -113,7 +114,7 @@ const PackageRow = ({ pkg, selectedPackages, checkPackage, loadingVersions, refr
           )}
           <Checkbox
             checked={selectedPackages.includes(pkg.id)}
-            onChange={() => checkPackage(pkg.id)}
+            onChange={() => onSelect(pkg.id)}
             disabled={isFollowed}
           />
         </Box>
@@ -131,53 +132,70 @@ const PackageRow = ({ pkg, selectedPackages, checkPackage, loadingVersions, refr
         <VersionCell 
           pkg={pkg} 
           loadingVersions={loadingVersions} 
-          loadPackageVersion={loadPackageVersion} 
+          onCheckVersion={onCheckVersion} 
         />
       </TableCell>
       <TableCell>
         <StatusCell pkg={pkg} getVersionStatus={getVersionStatus} />
       </TableCell>
       <TableCell>
-        <ActionsCell pkg={pkg} refreshVersion={refreshVersion} />
+        <ActionsCell pkg={pkg} onRefresh={onRefresh} />
       </TableCell>
     </TableRow>
   );
-};
+});
 
 // Main component
-const PackageTable = ({ packages }) => {
+const PackageTable = React.memo(({ packages }) => {
   const { 
     loadingVersions, 
     selectedPackages, 
-    checkPackage, 
-    refreshVersion, 
     getVersionStatus,
-    loadPackageVersion,
     isPackageFollowed
   } = usePackageContext();
+  
+  const { 
+    handleSelect, 
+    handleRefresh, 
+    handleCheckVersion 
+  } = usePackageOperations();
+
+  // Memoize the table rows to prevent unnecessary re-renders
+  const tableRows = useMemo(() => {
+    return packages.map((pkg) => (
+      <PackageRow 
+        key={pkg.id}
+        pkg={pkg}
+        selectedPackages={selectedPackages}
+        onSelect={handleSelect}
+        loadingVersions={loadingVersions}
+        onRefresh={handleRefresh}
+        getVersionStatus={getVersionStatus}
+        onCheckVersion={handleCheckVersion}
+        isPackageFollowed={isPackageFollowed}
+      />
+    ));
+  }, [
+    packages, 
+    selectedPackages, 
+    handleSelect, 
+    loadingVersions, 
+    handleRefresh, 
+    getVersionStatus, 
+    handleCheckVersion, 
+    isPackageFollowed
+  ]);
 
   return (
     <TableContainer>
       <Table size="small">
         <TableHeader />
         <TableBody>
-          {packages.map((pkg) => (
-            <PackageRow 
-              key={pkg.id}
-              pkg={pkg}
-              selectedPackages={selectedPackages}
-              checkPackage={checkPackage}
-              loadingVersions={loadingVersions}
-              refreshVersion={refreshVersion}
-              getVersionStatus={getVersionStatus}
-              loadPackageVersion={loadPackageVersion}
-              isPackageFollowed={isPackageFollowed}
-            />
-          ))}
+          {tableRows}
         </TableBody>
       </Table>
     </TableContainer>
   );
-};
+});
 
 export default PackageTable; 

@@ -1,33 +1,59 @@
-const API_BASE_URL = 'http://localhost:3001/api';
+import config from '../config/api';
 
-export const fetchPackages = async () => {
-  const response = await fetch(`${API_BASE_URL}/packages`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch packages');
+/**
+ * Generic fetch wrapper with error handling
+ * @param {string} endpoint - API endpoint
+ * @param {Object} options - Fetch options
+ * @returns {Promise<any>} - API response
+ */
+const fetchApi = async (endpoint, options = {}) => {
+  try {
+    const response = await fetch(`${config.baseUrl}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error(`API request failed: ${endpoint}`, error);
+    throw error;
   }
-  return response.json();
 };
 
-export const fetchPackageVersion = async (id) => {
-  const response = await fetch(`${API_BASE_URL}/package-version/${id}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch package version');
-  }
-  return response.json();
+/**
+ * Fetch all packages
+ * @returns {Promise<Array>} - List of packages
+ */
+export const fetchPackages = () => {
+  return fetchApi('/packages');
 };
 
-export const upgradePackage = async (projectName, packageInfo) => {
-  const response = await fetch(`${API_BASE_URL}/upgrade`, {
+/**
+ * Fetch version information for a specific package
+ * @param {string} id - Package ID
+ * @returns {Promise<Object>} - Package version information
+ */
+export const fetchPackageVersion = (id) => {
+  return fetchApi(`/package-version/${id}`);
+};
+
+/**
+ * Upgrade a package
+ * @param {string} projectName - Project name
+ * @param {Object} packageInfo - Package information
+ * @returns {Promise<Object>} - Upgrade result
+ */
+export const upgradePackage = (projectName, packageInfo) => {
+  return fetchApi('/upgrade', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({ projectName, packageInfo }),
   });
-  
-  if (!response.ok) {
-    throw new Error('Failed to upgrade package');
-  }
-  
-  return response.json();
 }; 

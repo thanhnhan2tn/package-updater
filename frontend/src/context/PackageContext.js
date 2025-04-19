@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { fetchPackages, fetchPackageVersion, upgradePackage as upgradePackageApi } from '../services/api';
 import { packagesToFollow, packagesMetadata } from '../config/packagesToFollow';
 
@@ -22,6 +22,7 @@ export const PackageProvider = ({ children }) => {
   const [loadingVersions, setLoadingVersions] = useState({});
   const [selectedPackages, setSelectedPackages] = useState([]);
   const [refreshingSelected, setRefreshingSelected] = useState(false);
+  const [upgrading, setUpgrading] = useState({});
 
   // Load a single package version
   const loadPackageVersion = useCallback(async (id) => {
@@ -43,6 +44,7 @@ export const PackageProvider = ({ children }) => {
   const loadPackages = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await fetchPackages();
       setPackages(data);
       
@@ -52,9 +54,8 @@ export const PackageProvider = ({ children }) => {
         .map(pkg => pkg.id);
       
       setSelectedPackages(validFollowedPackages);
-      setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to load packages');
       console.error('Error fetching packages:', err);
     } finally {
       setLoading(false);
@@ -143,8 +144,8 @@ export const PackageProvider = ({ children }) => {
     return currentVersion === latestVersion ? 'up-to-date' : 'outdated';
   }, []);
 
-  // Group packages by project
-  const getPackagesByProject = useCallback(() => {
+  // Group packages by project - memoized for performance
+  const packagesByProject = useMemo(() => {
     return packages.reduce((acc, pkg) => {
       if (!acc[pkg.project]) acc[pkg.project] = [];
       acc[pkg.project].push(pkg);
@@ -152,15 +153,15 @@ export const PackageProvider = ({ children }) => {
     }, {});
   }, [packages]);
 
-  // Get info for selected packages
-  const getSelectedPackagesInfo = useCallback(() => {
+  // Get info for selected packages - memoized for performance
+  const selectedPackagesInfo = useMemo(() => {
     return selectedPackages
       .map(id => packages.find(p => p.id === id))
       .filter(Boolean);
   }, [selectedPackages, packages]);
 
-  // Get info for followed packages
-  const getFollowedPackagesInfo = useCallback(() => {
+  // Get info for followed packages - memoized for performance
+  const followedPackagesInfo = useMemo(() => {
     return packagesToFollow
       .map(id => {
         const pkg = packages.find(p => p.id === id);
@@ -177,26 +178,42 @@ export const PackageProvider = ({ children }) => {
   // Upgrade a package
   const upgradePackage = useCallback(async (pkg) => {
     try {
+      setUpgrading(prev => ({ ...prev, [pkg.id]: true }));
       const result = await upgradePackageApi(pkg.project, {
         name: pkg.name,
         latestVersion: pkg.latestVersion,
         type: pkg.type
       });
+      
+      // Refresh the package version after upgrade
+      await loadPackageVersion(pkg.id);
+      
       return result;
     } catch (error) {
       console.error('Error upgrading package:', error);
       throw error;
+    } finally {
+      setUpgrading(prev => ({ ...prev, [pkg.id]: false }));
     }
-  }, []);
+  }, [loadPackageVersion]);
 
   // Context value
   const value = {
+    // State
     packages,
     loading,
     error,
     loadingVersions,
     selectedPackages,
     refreshingSelected,
+    upgrading,
+    
+    // Computed values
+    packagesByProject,
+    selectedPackagesInfo,
+    followedPackagesInfo,
+    
+    // Actions
     loadPackages,
     loadPackageVersion,
     refreshVersion,
@@ -205,9 +222,6 @@ export const PackageProvider = ({ children }) => {
     checkAllInProject,
     removeFromSelection,
     getVersionStatus,
-    getPackagesByProject,
-    getSelectedPackagesInfo,
-    getFollowedPackagesInfo,
     isPackageFollowed,
     upgradePackage
   };

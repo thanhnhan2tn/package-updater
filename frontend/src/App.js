@@ -1,22 +1,49 @@
 import React from 'react';
-import { Container, Typography } from '@mui/material';
+import { Container, Typography, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { PackageProvider, usePackageContext } from './context/PackageContext';
 import SelectedPackages from './components/SelectedPackages';
 import ProjectAccordion from './components/ProjectAccordion';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 
+// Create a theme
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+  },
+  typography: {
+    h4: {
+      fontWeight: 600,
+    },
+    h6: {
+      fontWeight: 500,
+    },
+  },
+  components: {
+    MuiAccordion: {
+      styleOverrides: {
+        root: {
+          marginBottom: 8,
+        },
+      },
+    },
+  },
+});
+
 // Package manager component
 const PackageManager = () => {
-  const { loading, error, getPackagesByProject } = usePackageContext();
+  const { loading, error, packagesByProject } = usePackageContext();
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error} />;
 
-  const packagesByProject = getPackagesByProject();
-
   return (
-    <Container sx={{ mt: 4 }}>
+    <Container sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
         Package Dependencies
       </Typography>
@@ -36,9 +63,12 @@ const PackageManager = () => {
 
 // Main app component
 const App = () => (
-  <PackageProvider>
-    <PackageManager />
-  </PackageProvider>
+  <ThemeProvider theme={theme}>
+    <CssBaseline />
+    <PackageProvider>
+      <PackageManager />
+    </PackageProvider>
+  </ThemeProvider>
 );
 
 export default App; 
