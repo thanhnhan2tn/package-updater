@@ -1,22 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Box,
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  TextField,
-  InputAdornment,
-  Tooltip,
-  CircularProgress,
-  Checkbox
+import { 
+  Box, 
+  Typography, 
+  Paper, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Chip, 
+  Tooltip, 
+  CircularProgress, 
+  Checkbox, 
+  IconButton, 
+  FormControl, 
+  InputLabel, 
+  Select, 
+  MenuItem 
 } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
@@ -26,9 +30,9 @@ import axios from 'axios';
 
 const DockerImageTable = () => {
   const [dockerImages, setDockerImages] = useState([]);
+  const [loadingVersions, setLoadingVersions] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
   
   const { selectedProject, setSelectedPackages } = usePackageContext();
@@ -45,10 +49,8 @@ const DockerImageTable = () => {
         
         // Ensure all Docker images have IDs prefixed with 'docker-'
         const formattedImages = (response.data || []).map(image => {
-          if (!image.id.startsWith('docker-')) {
-            return { ...image, id: `docker-${image.id}` };
-          }
-          return image;
+          const id = image.id.startsWith('docker-') ? image.id : `docker-${image.id}`;
+          return { ...image, id, latestVersion: null };
         });
         
         setDockerImages(formattedImages);
@@ -71,19 +73,25 @@ const DockerImageTable = () => {
     fetchDockerImages();
   }, [selectedProject]);
   
-  // Filter images by search term and selected project
-  const filteredImages = useMemo(() => {
-    return dockerImages.filter(image => {
-      const matchesSearch = 
-        image.imageName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        image.currentVersion.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesProject = !selectedProject || image.project === selectedProject;
-      
-      return matchesSearch && matchesProject;
-    });
-  }, [dockerImages, searchTerm, selectedProject]);
-  
+  // trigger version check on demand
+  const checkVersion = async (imageId) => {
+    try {
+      setLoadingVersions(prev => ({ ...prev, [imageId]: true }));
+      const res = await axios.get(`http://localhost:3001/api/docker/images/${imageId}/version`);
+      const updated = res.data;
+      setDockerImages(imgs => imgs.map(img => img.id === imageId ? { ...img, latestVersion: updated.latestVersion } : img));
+    } catch (e) {
+      console.error(`Version check failed for ${imageId}:`, e);
+    } finally {
+      setLoadingVersions(prev => ({ ...prev, [imageId]: false }));
+    }
+  };
+
+  // Filter images by selected project only
+  const filteredImages = useMemo(() => 
+    dockerImages.filter(img => !selectedProject || img.project === selectedProject)
+  , [dockerImages, selectedProject]);
+
   // Handle image selection
   const handleSelectImage = (imageId) => {
     // Ensure the ID is prefixed with 'docker-' to distinguish from NPM packages
@@ -104,23 +112,6 @@ const DockerImageTable = () => {
         return newSelected;
       }
     });
-  };
-  
-  // Handle select all images
-  const handleSelectAllImages = (event) => {
-    if (event.target.checked) {
-      const newSelectedIds = filteredImages
-        .filter(image => image.currentVersion !== image.latestVersion)
-        .map(image => {
-          // Ensure the ID is prefixed with 'docker-'
-          return image.id.startsWith('docker-') ? image.id : `docker-${image.id}`;
-        });
-      setSelectedImages(newSelectedIds);
-      setSelectedPackages(newSelectedIds);
-    } else {
-      setSelectedImages([]);
-      setSelectedPackages([]);
-    }
   };
   
   // Status cell component for Docker images
@@ -162,7 +153,109 @@ const DockerImageTable = () => {
       </Box>
     );
   };
-  
+
+  // Version cell component (only fetches latestVersion on click)
+  const VersionCell = React.memo(({ image, loadingVersions, onCheckVersion }) => {
+    if (loadingVersions[image.id]) return <CircularProgress size={20} />;
+    if (image.latestVersion) return image.latestVersion;
+    return (
+      <IconButton size="small" onClick={() => onCheckVersion(image.id)} title="Check version">
+        <RefreshIcon fontSize="small" />
+      </IconButton>
+    );
+  });
+
+  // Image row component
+  const ImageRow = React.memo(({ image, selectedImages, onSelect, loadingVersions, checkVersion }) => (
+    <TableRow key={image.id} hover>
+      <TableCell padding="checkbox">
+        {image.currentVersion !== image.latestVersion && (
+          <Checkbox
+            checked={selectedImages.includes(image.id.startsWith('docker-') ? image.id : `docker-${image.id}`)}
+            onChange={() => onSelect(image.id)}
+            inputProps={{ 'aria-labelledby': `image-${image.id}` }}
+          />
+        )}
+      </TableCell>
+      <TableCell>{image.project}</TableCell>
+      <TableCell>
+        <Chip 
+          label={image.type} 
+          size="small"
+          sx={{ 
+            backgroundColor: image.type === 'frontend' ? '#e0f2fe' : '#f0fdf4',
+            color: image.type === 'frontend' ? '#0369a1' : '#166534',
+            fontWeight: 500
+          }}
+        />
+      </TableCell>
+      <TableCell sx={{ fontFamily: 'monospace' }}>{image.imageName}</TableCell>
+      <TableCell sx={{ fontFamily: 'monospace' }}>{image.currentVersion}</TableCell>
+      <TableCell>
+        <VersionCell
+          image={image}
+          loadingVersions={loadingVersions}
+          onCheckVersion={checkVersion}
+        />
+      </TableCell>
+      <TableCell>
+        <StatusCell image={image} />
+      </TableCell>
+    </TableRow>
+  ));
+
+  // Section Header component (mirrors PackageTable)
+  const SectionHeader = React.memo(({ title, count, color }) => (
+    <TableCell
+      colSpan={7}
+      sx={{ backgroundColor: color, color: 'white', fontWeight: 'bold', py: 1 }}
+    >
+      {title} ({count})
+    </TableCell>
+  ));
+
+  // Filter options
+  const FILTER_ALL = 'all';
+  const FILTER_OUTDATED = 'outdated';
+
+  // Section filter component
+  const DockerImageFilter = React.memo(({ filter, onFilterChange, label }) => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+      <FilterListIcon sx={{ color: 'text.secondary' }} />
+      <FormControl size="small">
+        <InputLabel id={`${label}-filter-label`}>{label} Filter</InputLabel>
+        <Select
+          labelId={`${label}-filter-label`}
+          value={filter}
+          label={`${label} Filter`}
+          onChange={e => onFilterChange(e.target.value)}
+        >
+          <MenuItem value={FILTER_ALL}>All</MenuItem>
+          <MenuItem value={FILTER_OUTDATED}>Outdated</MenuItem>
+        </Select>
+      </FormControl>
+    </Box>
+  ));
+
+  // section filters
+  const [frontendFilter, setFrontendFilter] = useState(FILTER_ALL);
+  const [serverFilter, setServerFilter] = useState(FILTER_ALL);
+
+  // group by type
+  const imagesByType = useMemo(() => (
+    filteredImages.reduce((acc, img) => { acc[img.type] = acc[img.type] || []; acc[img.type].push(img); return acc; }, {})
+  ), [filteredImages]);
+
+  // apply section filters
+  const filteredFrontendImages = useMemo(() => {
+    const arr = imagesByType.frontend || [];
+    return arr.filter(img => (frontendFilter === FILTER_ALL || img.currentVersion !== img.latestVersion));
+  }, [imagesByType.frontend, frontendFilter]);
+  const filteredServerImages = useMemo(() => {
+    const arr = imagesByType.server || [];
+    return arr.filter(img => (serverFilter === FILTER_ALL || img.currentVersion !== img.latestVersion));
+  }, [imagesByType.server, serverFilter]);
+
   // Render loading state
   if (loading) {
     return (
@@ -187,115 +280,55 @@ const DockerImageTable = () => {
   }
   
   return (
-    <Box sx={{ mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" component="h2" fontWeight={600}>
-          Docker Images
-        </Typography>
-        
-        <TextField
-          placeholder="Search images..."
-          size="small"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ width: '250px' }}
-        />
-      </Box>
-      
-      <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: 1 }}>
-        <Table>
-          <TableHead sx={{ backgroundColor: '#f8fafc' }}>
-            <TableRow>
-              <TableCell padding="checkbox">
-                <Checkbox
-                  indeterminate={
-                    selectedImages.length > 0 && 
-                    selectedImages.length < filteredImages.filter(img => img.currentVersion !== img.latestVersion).length
-                  }
-                  checked={
-                    filteredImages.length > 0 && 
-                    selectedImages.length === filteredImages.filter(img => img.currentVersion !== img.latestVersion).length
-                  }
-                  onChange={handleSelectAllImages}
-                  inputProps={{ 'aria-label': 'select all images' }}
-                />
-              </TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Project</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Image Name</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Current Version</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Latest Version</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredImages.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    No Docker images found. This could be because:
-                  </Typography>
-                  <Box component="ul" sx={{ textAlign: 'left', display: 'inline-block', mt: 1 }}>
-                    <Typography component="li" variant="body2" color="text.secondary">
-                      No Dockerfiles are defined in your projects
-                    </Typography>
-                    <Typography component="li" variant="body2" color="text.secondary">
-                      Dockerfiles don't have valid FROM instructions
-                    </Typography>
-                    <Typography component="li" variant="body2" color="text.secondary">
-                      Remote repositories haven't been cloned yet
-                    </Typography>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredImages.map((image) => {
-                const needsUpgrade = image.currentVersion !== image.latestVersion;
-                
-                return (
-                  <TableRow key={image.id} hover>
-                    <TableCell padding="checkbox">
-                      {needsUpgrade && (
-                        <Checkbox
-                          checked={selectedImages.includes(image.id.startsWith('docker-') ? image.id : `docker-${image.id}`)}
-                          onChange={() => handleSelectImage(image.id)}
-                          inputProps={{ 'aria-labelledby': `image-${image.id}` }}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell>{image.project}</TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={image.type} 
-                        size="small"
-                        sx={{ 
-                          backgroundColor: image.type === 'frontend' ? '#e0f2fe' : '#f0fdf4',
-                          color: image.type === 'frontend' ? '#0369a1' : '#166534',
-                          fontWeight: 500
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace' }}>{image.imageName}</TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace' }}>{image.currentVersion}</TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace' }}>{image.latestVersion}</TableCell>
-                    <TableCell>
-                      <StatusCell image={image} />
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
+    <TableContainer component={Paper} sx={{ mb: 2 }}>
+      <Table size="small" sx={{ '& .MuiTableCell-root': { borderBottom: '1px solid #e0e0e0' } }}>
+        {/* Frontend Filter */}
+        <TableHead>
+          <TableRow>
+            <TableCell colSpan={7} sx={{ p: 0, border: 'none' }}>
+              {imagesByType.frontend?.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <DockerImageFilter filter={frontendFilter} onFilterChange={setFrontendFilter} label="Frontend" />
+                </Box>
+              )}
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {imagesByType.frontend?.length > 0 ? (
+            <>
+              <TableRow><SectionHeader title="Frontend Images" count={filteredFrontendImages.length} color="primary.main" /></TableRow>
+              {filteredFrontendImages.map(img => <ImageRow key={img.id} image={img} selectedImages={selectedImages} onSelect={handleSelectImage} loadingVersions={loadingVersions} checkVersion={checkVersion} />)}
+            </>
+          ) : (
+            <TableRow><TableCell colSpan={7} align="center" sx={{ py: 2 }}><Typography color="text.secondary">No frontend images.</Typography></TableCell></TableRow>
+          )}
+        </TableBody>
+
+        {/* Server Filter */}
+        <TableHead>
+          <TableRow>
+            <TableCell colSpan={7} sx={{ p: 0, border: 'none' }}>
+              {imagesByType.server?.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <DockerImageFilter filter={serverFilter} onFilterChange={setServerFilter} label="Server" />
+                </Box>
+              )}
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {imagesByType.server?.length > 0 ? (
+            <>
+              <TableRow><SectionHeader title="Server Images" count={filteredServerImages.length} color="secondary.main" /></TableRow>
+              {filteredServerImages.map(img => <ImageRow key={img.id} image={img} selectedImages={selectedImages} onSelect={handleSelectImage} loadingVersions={loadingVersions} checkVersion={checkVersion} />)}
+            </>
+          ) : (
+            <TableRow><TableCell colSpan={7} align="center" sx={{ py: 2 }}><Typography color="text.secondary">No server images.</Typography></TableCell></TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 };
 
