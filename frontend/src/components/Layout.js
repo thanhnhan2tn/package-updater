@@ -1,44 +1,63 @@
 import React from 'react';
-import { Box, Paper } from '@mui/material';
+import { Box, Paper, Typography } from '@mui/material';
 
-const Layout = ({ projectsPanel, dependenciesPanel }) => {
+const Layout = ({ projectsPanel, dependenciesPanel, selectedPackagesPanel }) => {
   return (
     <Box
       sx={{
         display: 'flex',
+        flexDirection: 'column',
         gap: 3,
         p: 3,
         minHeight: '100vh',
         backgroundColor: '#f5f5f5'
       }}
     >
-      {/* Projects Panel */}
-      <Paper
-        elevation={1}
-        sx={{
-          width: 300,
-          p: 3,
-          borderRadius: 2,
-          backgroundColor: '#ffffff'
-        }}
-      >
-        {projectsPanel}
-      </Paper>
+      <Typography variant="h4" component="h1" fontWeight="bold" sx={{ mb: 1 }}>
+        Dependency Manager
+      </Typography>
+      
+      {/* Selected Packages Panel - only shown when packages are selected */}
+      {selectedPackagesPanel}
+      
+      <Box sx={{ display: 'flex', gap: 3, flex: 1 }}>
+        {/* Projects Panel */}
+        <Paper
+          elevation={1}
+          sx={{
+            width: 300,
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: 2,
+            backgroundColor: '#ffffff',
+            overflow: 'hidden'
+          }}
+        >
+          <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0' }}>
+            <Typography variant="h6">Projects</Typography>
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            {projectsPanel}
+          </Box>
+        </Paper>
 
-      {/* Dependencies Panel */}
-      <Paper
-        elevation={1}
-        sx={{
-          flex: 1,
-          p: 3,
-          borderRadius: 2,
-          backgroundColor: '#ffffff'
-        }}
-      >
-        {dependenciesPanel}
-      </Paper>
+        {/* Dependencies Panel */}
+        <Paper
+          elevation={1}
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: 2,
+            backgroundColor: '#ffffff',
+            overflow: 'hidden'
+          }}
+        >
+          {dependenciesPanel}
+        </Paper>
+      </Box>
     </Box>
   );
 };
 
-export default Layout; 
+export default Layout;

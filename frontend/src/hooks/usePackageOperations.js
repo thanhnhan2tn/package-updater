@@ -7,7 +7,8 @@ import { usePackageContext } from '../context/PackageContext';
  */
 export const usePackageOperations = () => {
   const { 
-    upgradePackage, 
+    upgradePackage,
+    upgradePackages,
     refreshVersion, 
     loadPackageVersion,
     checkPackage,
@@ -28,6 +29,30 @@ export const usePackageOperations = () => {
       // Error handling could be improved with a toast notification
     }
   }, [upgradePackage]);
+
+  /**
+   * Handle multiple package upgrades
+   * @param {Array<string>} packageIds - Array of package IDs to upgrade
+   * @returns {Promise<Object>} Result of the upgrade operation
+   */
+  const handleUpgradePackages = useCallback(async (packageIds) => {
+    try {
+      const result = await upgradePackages(packageIds);
+      
+      // Here you could add a toast notification based on the result
+      if (result.success) {
+        console.log('All packages upgraded successfully');
+      } else {
+        console.warn('Some packages failed to upgrade', result.results);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error upgrading packages:', error);
+      // Error handling could be improved with a toast notification
+      return { success: false, error: error.message };
+    }
+  }, [upgradePackages]);
 
   /**
    * Handle package refresh
@@ -72,10 +97,11 @@ export const usePackageOperations = () => {
 
   return {
     handleUpgrade,
+    handleUpgradePackages,
     handleRefresh,
     handleCheckVersion,
     handleSelect,
     handleProjectSelect,
     handleRemove
   };
-}; 
+};

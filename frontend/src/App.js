@@ -4,6 +4,7 @@ import { PackageProvider, usePackageContext } from './context/PackageContext';
 import Layout from './components/Layout';
 import ProjectList from './components/ProjectList';
 import DependenciesPanel from './components/DependenciesPanel';
+import SelectedPackagesPanel from './components/SelectedPackagesPanel';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 
@@ -19,6 +20,9 @@ const theme = createTheme({
     background: {
       default: '#f5f5f5',
     },
+    warning: {
+      main: '#f59e0b',
+    }
   },
   typography: {
     h4: {
@@ -52,13 +56,14 @@ const theme = createTheme({
 
 // Package manager component
 const PackageManager = () => {
-  const { loading, error } = usePackageContext();
+  const { loading, error, selectedPackages } = usePackageContext();
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error} />;
 
   return (
     <Layout
+      selectedPackagesPanel={selectedPackages.length > 0 ? <SelectedPackagesPanel /> : null}
       projectsPanel={<ProjectList />}
       dependenciesPanel={<DependenciesPanel />}
     />
@@ -75,4 +80,4 @@ const App = () => (
   </ThemeProvider>
 );
 
-export default App; 
+export default App;

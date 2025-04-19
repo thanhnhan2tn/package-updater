@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Typography,
   List,
   ListItem,
   ListItemButton,
@@ -12,40 +11,38 @@ const ProjectList = () => {
   const { packagesByProject, selectedProject, setSelectedProject } = usePackageContext();
 
   return (
-    <>
-      <Typography variant="h5" gutterBottom fontWeight={600}>
-        Projects
-      </Typography>
-      <List sx={{ mt: 2 }}>
-        {Object.keys(packagesByProject).map((project) => (
-          <ListItem key={project} disablePadding>
-            <ListItemButton
-              selected={selectedProject === project}
-              onClick={() => setSelectedProject(project)}
-              sx={{
-                borderRadius: 1,
-                mb: 0.5,
-                '&.Mui-selected': {
-                  backgroundColor: 'primary.main',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: 'primary.dark',
-                  },
+    <List sx={{ p: 0 }}>
+      {Object.keys(packagesByProject).map((project) => (
+        <ListItem key={project} disablePadding>
+          <ListItemButton
+            selected={selectedProject === project}
+            onClick={() => setSelectedProject(project)}
+            sx={{
+              py: 1.5,
+              px: 2,
+              '&.Mui-selected': {
+                backgroundColor: '#0F172A',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: '#1E293B',
                 },
+              },
+              '&:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+              },
+            }}
+          >
+            <ListItemText 
+              primary={project}
+              primaryTypographyProps={{
+                fontWeight: selectedProject === project ? 600 : 400,
               }}
-            >
-              <ListItemText 
-                primary={project}
-                primaryTypographyProps={{
-                  fontWeight: selectedProject === project ? 600 : 400,
-                }}
-              />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
-    </>
+            />
+          </ListItemButton>
+        </ListItem>
+      ))}
+    </List>
   );
 };
 
-export default ProjectList; 
+export default ProjectList;

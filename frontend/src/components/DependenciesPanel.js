@@ -20,43 +20,54 @@ const DependenciesPanel = () => {
 
   return (
     <>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" fontWeight={600}>
-          Dependencies
-        </Typography>
+      <Box 
+        sx={{ 
+          p: 2, 
+          borderBottom: '1px solid #e0e0e0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}
+      >
+        <Typography variant="h6">Dependencies</Typography>
         <Button
           variant="contained"
           startIcon={<RefreshIcon />}
           onClick={refreshSelectedVersions}
           disabled={refreshingSelected}
           sx={{
-            borderRadius: 2,
-            textTransform: 'none',
-            px: 3,
+            backgroundColor: '#0F172A',
+            '&:hover': {
+              backgroundColor: '#1E293B',
+            },
+            borderRadius: 1,
           }}
+          size="small"
         >
           Refresh All
         </Button>
       </Box>
 
-      {selectedProject ? (
-        <PackageTable packages={packages} />
-      ) : (
-        <Box
-          sx={{
-            height: '50vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Typography color="text.secondary">
-            No dependencies found
-          </Typography>
-        </Box>
-      )}
+      <Box sx={{ p: 2, flex: 1 }}>
+        {selectedProject && packages.length > 0 ? (
+          <PackageTable packages={packages} />
+        ) : (
+          <Box
+            sx={{
+              height: '50vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Typography color="text.secondary">
+              No dependencies found
+            </Typography>
+          </Box>
+        )}
+      </Box>
     </>
   );
 };
 
-export default DependenciesPanel; 
+export default DependenciesPanel;

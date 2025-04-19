@@ -2,6 +2,18 @@ import React, { createContext, useState, useContext, useEffect, useCallback, use
 import { fetchPackages, fetchPackageVersion, upgradePackage as upgradePackageApi } from '../services/api';
 import { packagesToFollow, packagesMetadata } from '../config/packagesToFollow';
 
+// Prioritized packages - these are considered important
+const prioritizedPackages = [
+  'react',
+  'react-dom',
+  'axios',
+  'express',
+  'lodash',
+  '@mui/material',
+  '@mui/icons-material',
+  'typescript'
+];
+
 // Create context
 const PackageContext = createContext();
 
@@ -204,6 +216,42 @@ export const PackageProvider = ({ children }) => {
     }
   }, [loadPackageVersion]);
 
+  // Upgrade multiple packages
+  const upgradePackages = useCallback(async (packageIds) => {
+    const packagesToUpgrade = packages
+      .filter(pkg => packageIds.includes(pkg.id) && pkg.latestVersion && pkg.latestVersion !== pkg.currentVersion);
+    
+    if (packagesToUpgrade.length === 0) {
+      return { success: true, message: 'No packages need upgrading' };
+    }
+    
+    const results = [];
+    for (const pkg of packagesToUpgrade) {
+      try {
+        setUpgrading(prev => ({ ...prev, [pkg.id]: true }));
+        const result = await upgradePackageApi(pkg.project, {
+          name: pkg.name,
+          latestVersion: pkg.latestVersion,
+          type: pkg.type
+        });
+        results.push({ id: pkg.id, success: true, result });
+      } catch (error) {
+        console.error(`Error upgrading package ${pkg.id}:`, error);
+        results.push({ id: pkg.id, success: false, error: error.message });
+      } finally {
+        setUpgrading(prev => ({ ...prev, [pkg.id]: false }));
+      }
+    }
+    
+    // Refresh all package versions after upgrade
+    await Promise.all(packageIds.map(id => loadPackageVersion(id)));
+    
+    return {
+      success: results.every(r => r.success),
+      results
+    };
+  }, [packages, loadPackageVersion]);
+
   // Context value
   const value = {
     // State
@@ -215,6 +263,7 @@ export const PackageProvider = ({ children }) => {
     refreshingSelected,
     upgrading,
     selectedProject,
+    prioritizedPackages,
     
     // Actions
     setSelectedProject,
@@ -228,6 +277,7 @@ export const PackageProvider = ({ children }) => {
     getVersionStatus,
     isPackageFollowed,
     upgradePackage,
+    upgradePackages,
     
     // Computed values
     packagesByProject,
@@ -240,4 +290,4 @@ export const PackageProvider = ({ children }) => {
       {children}
     </PackageContext.Provider>
   );
-}; 
+};
