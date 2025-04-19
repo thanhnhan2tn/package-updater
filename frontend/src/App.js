@@ -1,12 +1,12 @@
 import React from 'react';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { PackageProvider, usePackageContext } from './context/PackageContext';
-import Layout from './components/Layout';
+import Layout from './components/common/Layout';
 import ProjectList from './components/ProjectList';
 import DependenciesPanel from './components/DependenciesPanel';
 import SelectedPackagesPanel from './components/SelectedPackagesPanel';
-import LoadingSpinner from './components/LoadingSpinner';
-import ErrorMessage from './components/ErrorMessage';
+import LoadingSpinner from './components/common/LoadingSpinner';
+import ErrorMessage from './components/common/ErrorMessage';
 
 // Create a theme
 const theme = createTheme({

@@ -1,5 +1,5 @@
 # Stage 1: Build Frontend
-FROM node:18-alpine AS builder
+FROM 1:slim AS builder
 WORKDIR /app
 COPY package.json yarn.lock ./
 RUN npm install --legacy-peer-deps
