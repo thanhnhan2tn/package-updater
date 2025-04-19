@@ -1,6 +1,4 @@
 const { exec } = require('child_process');
-const util = require('util');
-const execAsync = util.promisify(exec);
 const Logger = require('../utils/logger');
 const config = require('../config');
 const fs = require('fs');
@@ -19,7 +17,9 @@ class CommandService {
   async executeCommand(command, directory) {
     try {
       Logger.debug(`Executing command: ${command} in ${directory}`);
-      const result = await execAsync(`cd ${directory} && ${command}`);
+      // dynamically import execa (ESM) at runtime
+      const { execa } = await import('execa');
+      const result = await execa.command(command, { cwd: directory, shell: true });
       return {
         success: true,
         stdout: result.stdout,
