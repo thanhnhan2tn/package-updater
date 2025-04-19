@@ -19,7 +19,7 @@ const config = {
   // Package manager configuration
   packageManager: {
     command: 'npm',
-    installCommand: 'npm install',
+    installCommand: 'npm install --legacy-peer-deps',
   },
 };
 

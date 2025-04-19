@@ -53,43 +53,73 @@ const VersionCell = React.memo(({ pkg, loadingVersions, onCheckVersion }) => {
 });
 
 // Status cell component
-const StatusCell = React.memo(({ pkg, getVersionStatus }) => {
+const StatusCell = React.memo(({ pkg, getVersionStatus, upgrading }) => {
   if (!pkg.latestVersion) return null;
   
-  const status = getVersionStatus(pkg.currentVersion, pkg.latestVersion);
+  const isUpgrading = upgrading[pkg.id];
+  
+  if (isUpgrading) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+          Updating...
+        </Typography>
+        <CircularProgress size={16} thickness={4} />
+      </Box>
+    );
+  }
+  
+  // Compare versions directly
+  const isUpToDate = pkg.currentVersion === pkg.latestVersion;
   
   return (
     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-      {status === 'up-to-date' ? (
-        <Tooltip title="Up to date">
-          <CheckCircleIcon color="success" />
-        </Tooltip>
+      {isUpToDate ? (
+        <>
+          <Tooltip title="Up to date">
+            <CheckCircleIcon color="success" fontSize="small" />
+          </Tooltip>
+          <Typography variant="caption" color="success.main" sx={{ ml: 1 }}>
+            Up to date
+          </Typography>
+        </>
       ) : (
-        <Tooltip title="Update available">
-          <ErrorIcon color="error" />
-        </Tooltip>
+        <>
+          <Tooltip title="Update available">
+            <ErrorIcon color="error" fontSize="small" />
+          </Tooltip>
+          <Typography variant="caption" color="error" sx={{ ml: 1 }}>
+            Update available
+          </Typography>
+        </>
       )}
     </Box>
   );
 });
 
 // Actions cell component
-const ActionsCell = React.memo(({ pkg, onRefresh }) => {
+const ActionsCell = React.memo(({ pkg, onRefresh, upgrading }) => {
   if (!pkg.latestVersion) return null;
   
+  const isUpgrading = upgrading[pkg.id];
+  
   return (
-    <IconButton 
-      size="small" 
-      onClick={() => onRefresh(pkg.id)}
-      title="Refresh version"
-    >
-      <RefreshIcon />
-    </IconButton>
+    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+      {/* Refresh button */}
+      <IconButton 
+        size="small" 
+        onClick={() => onRefresh(pkg.id)}
+        title="Refresh version"
+        disabled={isUpgrading}
+      >
+        <RefreshIcon fontSize="small" />
+      </IconButton>
+    </Box>
   );
 });
 
 // Package row component
-const PackageRow = React.memo(({ pkg, selectedPackages, onSelect, loadingVersions, onRefresh, getVersionStatus, onCheckVersion, isPackageFollowed, isPrioritized }) => {
+const PackageRow = React.memo(({ pkg, selectedPackages, onSelect, loadingVersions, onRefresh, getVersionStatus, onCheckVersion, isPackageFollowed, isPrioritized, upgrading }) => {
   const isFollowed = isPackageFollowed(pkg.id);
   
   return (
@@ -157,10 +187,18 @@ const PackageRow = React.memo(({ pkg, selectedPackages, onSelect, loadingVersion
         </Typography>
       </TableCell>
       <TableCell>
-        <StatusCell pkg={pkg} getVersionStatus={getVersionStatus} />
+        <StatusCell 
+          pkg={pkg} 
+          getVersionStatus={getVersionStatus} 
+          upgrading={upgrading} 
+        />
       </TableCell>
       <TableCell>
-        <ActionsCell pkg={pkg} onRefresh={onRefresh} />
+        <ActionsCell 
+          pkg={pkg} 
+          onRefresh={onRefresh} 
+          upgrading={upgrading} 
+        />
       </TableCell>
     </TableRow>
   );
@@ -216,13 +254,14 @@ const PackageTable = React.memo(({ packages }) => {
     selectedPackages, 
     getVersionStatus,
     isPackageFollowed,
-    prioritizedPackages
+    prioritizedPackages,
+    upgrading,
   } = usePackageContext();
   
   const { 
     handleSelect, 
     handleRefresh, 
-    handleCheckVersion 
+    handleCheckVersion
   } = usePackageOperations();
 
   // Group packages by type
@@ -245,8 +284,8 @@ const PackageTable = React.memo(({ packages }) => {
     if (frontendFilter === FILTER_OUTDATED) {
       filteredPackages = filteredPackages.filter(pkg => {
         if (!pkg.latestVersion) return false;
-        const status = getVersionStatus(pkg.currentVersion, pkg.latestVersion);
-        return status !== 'up-to-date';
+        const status = pkg.currentVersion === pkg.latestVersion;
+        return !status;
       });
     } else if (frontendFilter === FILTER_PRIORITIZED) {
       filteredPackages = filteredPackages.filter(pkg => 
@@ -264,7 +303,7 @@ const PackageTable = React.memo(({ packages }) => {
       
       return a.name.localeCompare(b.name);
     });
-  }, [packagesByType.frontend, frontendFilter, getVersionStatus, prioritizedPackages]);
+  }, [packagesByType.frontend, frontendFilter, prioritizedPackages]);
 
   // Filter and sort server packages
   const filteredServerPackages = useMemo(() => {
@@ -276,8 +315,8 @@ const PackageTable = React.memo(({ packages }) => {
     if (serverFilter === FILTER_OUTDATED) {
       filteredPackages = filteredPackages.filter(pkg => {
         if (!pkg.latestVersion) return false;
-        const status = getVersionStatus(pkg.currentVersion, pkg.latestVersion);
-        return status !== 'up-to-date';
+        const status = pkg.currentVersion === pkg.latestVersion;
+        return !status;
       });
     } else if (serverFilter === FILTER_PRIORITIZED) {
       filteredPackages = filteredPackages.filter(pkg => 
@@ -295,7 +334,7 @@ const PackageTable = React.memo(({ packages }) => {
       
       return a.name.localeCompare(b.name);
     });
-  }, [packagesByType.server, serverFilter, getVersionStatus, prioritizedPackages]);
+  }, [packagesByType.server, serverFilter, prioritizedPackages]);
 
   // Filter and sort other packages
   const otherPackages = useMemo(() => {
@@ -327,6 +366,7 @@ const PackageTable = React.memo(({ packages }) => {
             onCheckVersion={handleCheckVersion}
             isPackageFollowed={isPackageFollowed}
             isPrioritized={prioritizedPackages.includes(pkg.name)}
+            upgrading={upgrading}
           />
         );
       });
@@ -342,7 +382,8 @@ const PackageTable = React.memo(({ packages }) => {
     getVersionStatus,
     handleCheckVersion,
     isPackageFollowed,
-    prioritizedPackages
+    prioritizedPackages,
+    upgrading
   ]);
 
   // Create server package rows
@@ -363,6 +404,7 @@ const PackageTable = React.memo(({ packages }) => {
             onCheckVersion={handleCheckVersion}
             isPackageFollowed={isPackageFollowed}
             isPrioritized={prioritizedPackages.includes(pkg.name)}
+            upgrading={upgrading}
           />
         );
       });
@@ -378,7 +420,8 @@ const PackageTable = React.memo(({ packages }) => {
     getVersionStatus,
     handleCheckVersion,
     isPackageFollowed,
-    prioritizedPackages
+    prioritizedPackages,
+    upgrading
   ]);
 
   // Create other package rows
@@ -417,6 +460,7 @@ const PackageTable = React.memo(({ packages }) => {
               onCheckVersion={handleCheckVersion}
               isPackageFollowed={isPackageFollowed}
               isPrioritized={prioritizedPackages.includes(pkg.name)}
+              upgrading={upgrading}
             />
           );
         });
@@ -433,7 +477,8 @@ const PackageTable = React.memo(({ packages }) => {
     getVersionStatus,
     handleCheckVersion,
     isPackageFollowed,
-    prioritizedPackages
+    prioritizedPackages,
+    upgrading
   ]);
 
   return (
