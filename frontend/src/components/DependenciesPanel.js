@@ -41,6 +41,7 @@ const DependenciesPanel = () => {
               backgroundColor: '#1E293B',
             },
             borderRadius: 1,
+            textTransform: 'none',
           }}
           size="small"
         >

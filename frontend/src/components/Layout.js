@@ -13,7 +13,7 @@ const Layout = ({ projectsPanel, dependenciesPanel, selectedPackagesPanel }) => 
         backgroundColor: '#f5f5f5'
       }}
     >
-      <Typography variant="h4" component="h1" fontWeight="bold" sx={{ mb: 1 }}>
+      <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 2 }}>
         Dependency Manager
       </Typography>
       
@@ -25,7 +25,7 @@ const Layout = ({ projectsPanel, dependenciesPanel, selectedPackagesPanel }) => 
         <Paper
           elevation={1}
           sx={{
-            width: 300,
+            width: 240,
             display: 'flex',
             flexDirection: 'column',
             borderRadius: 2,
