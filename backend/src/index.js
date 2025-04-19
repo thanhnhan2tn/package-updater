@@ -4,9 +4,12 @@ const fs = require('fs').promises;
 const path = require('path');
 const { getLatestVersion } = require('./utils/versionChecker');
 const packageService = require('./services/packageService');
+const Logger = require('./utils/logger');
+const config = require('./config');
+const packageRoutes = require('./routes/packageRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = config.server.port;
 
 app.use(cors());
 app.use(express.json());
@@ -106,106 +109,16 @@ async function getAllPackages() {
   }
 }
 
-// Endpoint to get all packages without version information
-app.get('/api/packages', async (req, res) => {
-  try {
-    const packages = await getAllPackages();
-    res.json(packages);
-  } catch (error) {
-    console.error('Error getting packages:', error);
-    res.status(500).json({ error: 'Failed to get packages' });
-  }
+// Routes
+app.use('/api', packageRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  Logger.error('Unhandled error', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
-// Endpoint to get version information for a specific package
-app.get('/api/package-version/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const packages = await getAllPackages();
-    const pkg = packages.find(p => p.id === id);
-    
-    if (!pkg) {
-      return res.status(404).json({ error: 'Package not found' });
-    }
-    
-    const latestVersion = await getLatestVersion(pkg.name);
-    
-    res.json({
-      id: pkg.id,
-      name: pkg.name,
-      currentVersion: pkg.currentVersion,
-      latestVersion
-    });
-  } catch (error) {
-    console.error('Error getting package version:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Main endpoint to get all dependencies with version information
-app.get('/api/dependencies', async (req, res) => {
-  try {
-    const configPath = path.join(__dirname, '../../projects.json');
-    const configContent = await fs.readFile(configPath, 'utf8');
-    const projects = JSON.parse(configContent);
-
-    const results = [];
-
-    for (const project of projects) {
-      // Process frontend dependencies
-      const frontendPackage = await readPackageJson(project.frontend);
-      if (frontendPackage) {
-        const frontendDeps = await processDependencies(frontendPackage.dependencies);
-        results.push(...frontendDeps.map(dep => ({
-          ...dep,
-          project: project.name,
-          type: 'frontend'
-        })));
-      }
-
-      // Process server dependencies
-      const serverPackage = await readPackageJson(project.server);
-      if (serverPackage) {
-        const serverDeps = await processDependencies(serverPackage.dependencies);
-        results.push(...serverDeps.map(dep => ({
-          ...dep,
-          project: project.name,
-          type: 'server'
-        })));
-      }
-    }
-
-    res.json(results);
-  } catch (error) {
-    console.error('Error processing dependencies:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Upgrade package
-app.post('/api/upgrade', async (req, res) => {
-  try {
-    const { projectName, packageInfo } = req.body;
-    const projects = await getProjects();
-    const project = projects.find(p => p.name === projectName);
-
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-
-    // Ensure packageInfo has the type property
-    if (!packageInfo.type) {
-      return res.status(400).json({ error: 'Package type is required' });
-    }
-
-    const result = await packageService.upgradePackage(project, packageInfo);
-    res.json(result);
-  } catch (error) {
-    console.error('Error upgrading package:', error);
-    res.status(500).json({ error: 'Failed to upgrade package' });
-  }
-});
-
+// Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  Logger.info(`Server running on port ${PORT}`);
 }); 

@@ -1,35 +1,188 @@
-const fs = require('fs').promises;
-const path = require('path');
-const { exec } = require('child_process');
-const util = require('util');
-const execAsync = util.promisify(exec);
+const Logger = require('../utils/logger');
+const fileService = require('./fileService');
+const projectService = require('./projectService');
+const commandService = require('./commandService');
+const { getLatestVersion } = require('../utils/versionChecker');
 
+/**
+ * Service for package operations
+ */
 class PackageService {
+  /**
+   * Read a package.json file
+   * @param {string} filePath - Path to the package.json file
+   * @returns {Promise<Object|null>} - Package.json content or null if error
+   */
   async readPackageJson(filePath) {
+    return fileService.readJsonFile(filePath);
+  }
+
+  /**
+   * Get all packages from all projects
+   * @returns {Promise<Array>} - List of packages
+   */
+  async getAllPackages() {
     try {
-      const content = await fs.readFile(filePath, 'utf8');
-      return JSON.parse(content);
+      const projects = await projectService.getProjects();
+      const packages = [];
+      let idCounter = 1;
+
+      for (const project of projects) {
+        // Get frontend dependencies
+        const frontendPath = projectService.getPackageJsonPath(project, 'frontend');
+        if (frontendPath) {
+          const frontendPackage = await this.readPackageJson(frontendPath);
+          if (frontendPackage && frontendPackage.dependencies) {
+            for (const [name, version] of Object.entries(frontendPackage.dependencies)) {
+              packages.push({
+                id: `pkg-${idCounter++}`,
+                project: project.name,
+                type: 'frontend',
+                name,
+                currentVersion: version.replace(/[\^~]/g, ''),
+                latestVersion: null
+              });
+            }
+          }
+        }
+
+        // Get server dependencies
+        const serverPath = projectService.getPackageJsonPath(project, 'server');
+        if (serverPath) {
+          const serverPackage = await this.readPackageJson(serverPath);
+          if (serverPackage && serverPackage.dependencies) {
+            for (const [name, version] of Object.entries(serverPackage.dependencies)) {
+              packages.push({
+                id: `pkg-${idCounter++}`,
+                project: project.name,
+                type: 'server',
+                name,
+                currentVersion: version.replace(/[\^~]/g, ''),
+                latestVersion: null
+              });
+            }
+          }
+        }
+      }
+
+      return packages;
     } catch (error) {
-      console.error(`Error reading package.json at ${filePath}:`, error);
+      Logger.error('Error getting all packages', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get version information for a specific package
+   * @param {string} id - Package ID
+   * @returns {Promise<Object|null>} - Package version information or null if not found
+   */
+  async getPackageVersion(id) {
+    try {
+      const packages = await this.getAllPackages();
+      const pkg = packages.find(p => p.id === id);
+      
+      if (!pkg) {
+        return null;
+      }
+      
+      const latestVersion = await getLatestVersion(pkg.name);
+      
+      return {
+        id: pkg.id,
+        name: pkg.name,
+        currentVersion: pkg.currentVersion,
+        latestVersion
+      };
+    } catch (error) {
+      Logger.error(`Error getting package version for ${id}`, error);
       return null;
     }
   }
 
+  /**
+   * Process dependencies from a package.json
+   * @param {Object} dependencies - Dependencies object from package.json
+   * @returns {Promise<Array>} - List of processed dependencies
+   */
+  async processDependencies(dependencies) {
+    if (!dependencies) return [];
+    
+    const results = [];
+    for (const [name, version] of Object.entries(dependencies)) {
+      const latestVersion = await getLatestVersion(name);
+      results.push({
+        name,
+        currentVersion: version.replace(/[\^~]/g, ''),
+        latestVersion
+      });
+    }
+    return results;
+  }
+
+  /**
+   * Get all dependencies with version information
+   * @returns {Promise<Array>} - List of dependencies with version information
+   */
+  async getAllDependencies() {
+    try {
+      const projects = await projectService.getProjects();
+      const results = [];
+
+      for (const project of projects) {
+        // Process frontend dependencies
+        const frontendPath = projectService.getPackageJsonPath(project, 'frontend');
+        if (frontendPath) {
+          const frontendPackage = await this.readPackageJson(frontendPath);
+          if (frontendPackage && frontendPackage.dependencies) {
+            const frontendDeps = await this.processDependencies(frontendPackage.dependencies);
+            results.push(...frontendDeps.map(dep => ({
+              ...dep,
+              project: project.name,
+              type: 'frontend'
+            })));
+          }
+        }
+
+        // Process server dependencies
+        const serverPath = projectService.getPackageJsonPath(project, 'server');
+        if (serverPath) {
+          const serverPackage = await this.readPackageJson(serverPath);
+          if (serverPackage && serverPackage.dependencies) {
+            const serverDeps = await this.processDependencies(serverPackage.dependencies);
+            results.push(...serverDeps.map(dep => ({
+              ...dep,
+              project: project.name,
+              type: 'server'
+            })));
+          }
+        }
+      }
+
+      return results;
+    } catch (error) {
+      Logger.error('Error getting all dependencies', error);
+      return [];
+    }
+  }
+
+  /**
+   * Upgrade a package in a project
+   * @param {Object} project - Project object
+   * @param {Object} packageInfo - Package information
+   * @returns {Promise<Object>} - Upgrade result
+   */
   async upgradePackage(project, packageInfo) {
     try {
-      const { name, latestVersion } = packageInfo;
+      const { name, latestVersion, type } = packageInfo;
       
-      // Determine which package.json to update based on the package type
-      let packageJsonPath;
-      if (packageInfo.type === 'frontend') {
-        packageJsonPath = path.resolve(__dirname, '../../..', project.frontend);
-      } else if (packageInfo.type === 'server') {
-        packageJsonPath = path.resolve(__dirname, '../../..', project.server);
-      } else {
-        throw new Error('Package type must be either "frontend" or "server"');
+      // Get the package.json path
+      const packageJsonPath = projectService.getPackageJsonPath(project, type);
+      if (!packageJsonPath) {
+        throw new Error(`Invalid package type: ${type}`);
       }
       
-      console.log(`Upgrading package in: ${packageJsonPath}`);
+      Logger.info(`Upgrading package in: ${packageJsonPath}`);
       
       // Read current package.json
       const packageJson = await this.readPackageJson(packageJsonPath);
@@ -47,13 +200,19 @@ class PackageService {
       }
 
       // Write updated package.json
-      await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
+      const writeSuccess = await fileService.writeJsonFile(packageJsonPath, packageJson);
+      if (!writeSuccess) {
+        throw new Error('Failed to write updated package.json');
+      }
 
       // Get the directory containing the package.json
-      const projectDir = path.dirname(packageJsonPath);
+      const projectDir = fileService.getDirectory(packageJsonPath);
       
       // Install the updated package
-      await execAsync(`cd ${projectDir} && npm install`);
+      const installResult = await commandService.installDependencies(projectDir);
+      if (!installResult.success) {
+        throw new Error(`Failed to install dependencies: ${installResult.error}`);
+      }
 
       return {
         success: true,
@@ -64,7 +223,7 @@ class PackageService {
         }
       };
     } catch (error) {
-      console.error('Error upgrading package:', error);
+      Logger.error('Error upgrading package', error);
       return {
         success: false,
         message: error.message || 'Failed to upgrade package'
