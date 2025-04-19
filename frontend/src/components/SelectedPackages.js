@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Paper,
   Typography,
@@ -16,7 +16,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { usePackageContext } from '../context/PackageContext';
 
 // Package list item component
-const PackageListItem = ({ pkg, onRemove, showRemove = true }) => (
+const PackageListItem = ({ pkg, onRemove, onUpgrade, showRemove = true }) => (
   <ListItem>
     <ListItemText
       primary={
@@ -37,9 +37,20 @@ const PackageListItem = ({ pkg, onRemove, showRemove = true }) => (
     />
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
       {pkg.latestVersion && (
-        <Typography variant="body2" color="text.secondary">
-          {pkg.currentVersion} → {pkg.latestVersion}
-        </Typography>
+        <>
+          <Typography variant="body2" color="text.secondary">
+            {pkg.currentVersion} → {pkg.latestVersion}
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            color="primary"
+            onClick={() => onUpgrade(pkg)}
+            disabled={pkg.currentVersion === pkg.latestVersion}
+          >
+            Apply Fix
+          </Button>
+        </>
       )}
       {showRemove && (
         <IconButton
@@ -55,7 +66,7 @@ const PackageListItem = ({ pkg, onRemove, showRemove = true }) => (
 );
 
 // Package list section component
-const PackageListSection = ({ title, packages, onRemove, showRemove }) => (
+const PackageListSection = ({ title, packages, onRemove, onUpgrade, showRemove }) => (
   <>
     <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
       {title} ({packages.length})
@@ -66,6 +77,7 @@ const PackageListSection = ({ title, packages, onRemove, showRemove }) => (
           key={pkg.id} 
           pkg={pkg}
           onRemove={onRemove}
+          onUpgrade={onUpgrade}
           showRemove={showRemove}
         />
       ))}
@@ -80,8 +92,25 @@ const SelectedPackages = () => {
     refreshSelectedVersions, 
     removeFromSelection,
     getSelectedPackagesInfo,
-    getFollowedPackagesInfo
+    getFollowedPackagesInfo,
+    upgradePackage
   } = usePackageContext();
+
+  const [upgrading, setUpgrading] = useState({});
+
+  const handleUpgrade = async (pkg) => {
+    try {
+      setUpgrading(prev => ({ ...prev, [pkg.id]: true }));
+      const result = await upgradePackage(pkg);
+      console.log('Package upgraded:', result);
+      // Optionally show a success message
+    } catch (error) {
+      console.error('Error upgrading package:', error);
+      // Optionally show an error message
+    } finally {
+      setUpgrading(prev => ({ ...prev, [pkg.id]: false }));
+    }
+  };
 
   const followedPackagesInfo = getFollowedPackagesInfo();
   const selectedPackagesInfo = getSelectedPackagesInfo()
@@ -111,6 +140,7 @@ const SelectedPackages = () => {
         <PackageListSection 
           title="Followed Packages"
           packages={followedPackagesInfo}
+          onUpgrade={handleUpgrade}
           showRemove={false}
         />
       )}
@@ -122,6 +152,7 @@ const SelectedPackages = () => {
             title="Selected Packages"
             packages={selectedPackagesInfo}
             onRemove={removeFromSelection}
+            onUpgrade={handleUpgrade}
             showRemove={true}
           />
         </>

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { fetchPackages, fetchPackageVersion } from '../services/api';
+import { fetchPackages, fetchPackageVersion, upgradePackage as upgradePackageApi } from '../services/api';
 import { packagesToFollow, packagesMetadata } from '../config/packagesToFollow';
 
 // Create context
@@ -174,6 +174,21 @@ export const PackageProvider = ({ children }) => {
     return packagesToFollow.includes(id);
   }, []);
 
+  // Upgrade a package
+  const upgradePackage = useCallback(async (pkg) => {
+    try {
+      const result = await upgradePackageApi(pkg.project, {
+        name: pkg.name,
+        latestVersion: pkg.latestVersion,
+        type: pkg.type
+      });
+      return result;
+    } catch (error) {
+      console.error('Error upgrading package:', error);
+      throw error;
+    }
+  }, []);
+
   // Context value
   const value = {
     packages,
@@ -193,7 +208,8 @@ export const PackageProvider = ({ children }) => {
     getPackagesByProject,
     getSelectedPackagesInfo,
     getFollowedPackagesInfo,
-    isPackageFollowed
+    isPackageFollowed,
+    upgradePackage
   };
 
   return (

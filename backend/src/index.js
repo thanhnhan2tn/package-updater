@@ -3,6 +3,7 @@ const cors = require('cors');
 const fs = require('fs').promises;
 const path = require('path');
 const { getLatestVersion } = require('./utils/versionChecker');
+const packageService = require('./services/packageService');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -10,11 +11,27 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Function to get all projects from projects.json
+async function getProjects() {
+  try {
+    const configPath = path.join(__dirname, '../../projects.json');
+    const configContent = await fs.readFile(configPath, 'utf8');
+    return JSON.parse(configContent);
+  } catch (error) {
+    console.error('Error reading projects.json:', error);
+    return [];
+  }
+}
+
 // Function to read package.json file
 async function readPackageJson(filePath) {
   try {
+    if (!filePath) {
+      console.error('No file path provided to readPackageJson');
+      return null;
+    }
     // Resolve the path relative to the backend directory
-    const absolutePath = path.resolve(__dirname, '../../', filePath);
+    const absolutePath = path.resolve(__dirname, '../..', filePath);
     console.log(`Reading package.json from: ${absolutePath}`);
     const content = await fs.readFile(absolutePath, 'utf8');
     return JSON.parse(content);
@@ -96,7 +113,7 @@ app.get('/api/packages', async (req, res) => {
     res.json(packages);
   } catch (error) {
     console.error('Error getting packages:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Failed to get packages' });
   }
 });
 
@@ -162,6 +179,30 @@ app.get('/api/dependencies', async (req, res) => {
   } catch (error) {
     console.error('Error processing dependencies:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Upgrade package
+app.post('/api/upgrade', async (req, res) => {
+  try {
+    const { projectName, packageInfo } = req.body;
+    const projects = await getProjects();
+    const project = projects.find(p => p.name === projectName);
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Ensure packageInfo has the type property
+    if (!packageInfo.type) {
+      return res.status(400).json({ error: 'Package type is required' });
+    }
+
+    const result = await packageService.upgradePackage(project, packageInfo);
+    res.json(result);
+  } catch (error) {
+    console.error('Error upgrading package:', error);
+    res.status(500).json({ error: 'Failed to upgrade package' });
   }
 });
 
