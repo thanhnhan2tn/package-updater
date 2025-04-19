@@ -23,8 +23,10 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import StarIcon from '@mui/icons-material/Star';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import WarningIcon from '@mui/icons-material/Warning';
 import { usePackageContext } from '../context/PackageContext';
 import { usePackageOperations } from '../hooks/usePackageOperations';
+import { isMajorVersionUpgrade } from '../utils/versionUtils';
 
 // Filter options
 const FILTER_ALL = 'all';
@@ -71,6 +73,7 @@ const StatusCell = React.memo(({ pkg, getVersionStatus, upgrading }) => {
   
   // Compare versions directly
   const isUpToDate = pkg.currentVersion === pkg.latestVersion;
+  const isMajorUpgrade = isMajorVersionUpgrade(pkg.currentVersion, pkg.latestVersion);
   
   return (
     <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -81,6 +84,15 @@ const StatusCell = React.memo(({ pkg, getVersionStatus, upgrading }) => {
           </Tooltip>
           <Typography variant="caption" color="success.main" sx={{ ml: 1 }}>
             Up to date
+          </Typography>
+        </>
+      ) : isMajorUpgrade ? (
+        <>
+          <Tooltip title="Major version upgrade - manual update recommended">
+            <WarningIcon color="warning" fontSize="small" />
+          </Tooltip>
+          <Typography variant="caption" color="warning.main" sx={{ ml: 1 }}>
+            Major upgrade
           </Typography>
         </>
       ) : (

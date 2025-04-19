@@ -9,12 +9,15 @@ import {
   Divider,
   CircularProgress,
   Tooltip,
-  LinearProgress
+  LinearProgress,
+  Alert
 } from '@mui/material';
 import BuildIcon from '@mui/icons-material/Build';
 import DoneIcon from '@mui/icons-material/Done';
+import WarningIcon from '@mui/icons-material/Warning';
 import { usePackageContext } from '../context/PackageContext';
 import { usePackageOperations } from '../hooks/usePackageOperations';
+import { isMajorVersionUpgrade } from '../utils/versionUtils';
 
 const SelectedPackagesPanel = () => {
   const [isUpgrading, setIsUpgrading] = useState(false);
@@ -37,10 +40,21 @@ const SelectedPackagesPanel = () => {
     return allPackages.find(pkg => pkg.id === id);
   }).filter(Boolean); // Filter out any undefined values
 
-  // Calculate the number of packages that need upgrading
-  const packagesNeedingUpgrade = selectedPackageObjects.filter(pkg => 
-    pkg.latestVersion && pkg.currentVersion !== pkg.latestVersion
-  ).length;
+  // Separate packages into those with major upgrades and those with minor/patch upgrades
+  const packagesWithMajorUpgrades = selectedPackageObjects.filter(pkg => 
+    pkg.latestVersion && 
+    pkg.currentVersion !== pkg.latestVersion && 
+    isMajorVersionUpgrade(pkg.currentVersion, pkg.latestVersion)
+  );
+  
+  const packagesWithSafeUpgrades = selectedPackageObjects.filter(pkg => 
+    pkg.latestVersion && 
+    pkg.currentVersion !== pkg.latestVersion && 
+    !isMajorVersionUpgrade(pkg.currentVersion, pkg.latestVersion)
+  );
+
+  // Calculate the number of packages that need upgrading (excluding major version upgrades)
+  const packagesNeedingUpgrade = packagesWithSafeUpgrades.length;
 
   // Calculate the number of packages currently being upgraded
   const packagesBeingUpgraded = selectedPackages.filter(id => upgrading[id]).length;
@@ -69,14 +83,18 @@ const SelectedPackagesPanel = () => {
     }
   }, [packagesBeingUpgraded, packagesNeedingUpgrade]);
   
-  // Handle the upgrade of all selected packages
+  // Handle the upgrade of all selected packages (excluding major version upgrades)
   const handleUpgradeAll = async () => {
+    if (packagesWithSafeUpgrades.length === 0) return;
+    
     setIsUpgrading(true);
     setUpgradeComplete(false);
     setProgress(0);
     
     try {
-      const result = await handleUpgradePackages(selectedPackages);
+      // Only upgrade packages that don't have major version changes
+      const safePackageIds = packagesWithSafeUpgrades.map(pkg => pkg.id);
+      const result = await handleUpgradePackages(safePackageIds);
       
       if (result.success) {
         // Progress will be updated by the effect
@@ -139,6 +157,41 @@ const SelectedPackagesPanel = () => {
         </Box>
       </Box>
       
+      {packagesWithMajorUpgrades.length > 0 && (
+        <Alert 
+          severity="warning" 
+          icon={<WarningIcon />}
+          sx={{ mb: 2, '& .MuiAlert-message': { width: '100%' } }}
+        >
+          <Typography variant="body2" fontWeight={500}>
+            Major version upgrades detected
+          </Typography>
+          <Typography variant="caption" component="div" sx={{ mb: 1 }}>
+            The following packages have major version upgrades which may contain breaking changes. 
+            These will be excluded from automatic updates.
+          </Typography>
+          <Box sx={{ mt: 1 }}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {packagesWithMajorUpgrades.map(pkg => (
+                <Chip
+                  key={pkg.id}
+                  label={`${pkg.name}: ${pkg.currentVersion} → ${pkg.latestVersion}`}
+                  size="small"
+                  color="warning"
+                  sx={{ 
+                    mb: 0.5,
+                    borderRadius: '4px',
+                    '& .MuiChip-label': {
+                      fontSize: '0.75rem'
+                    }
+                  }}
+                />
+              ))}
+            </Stack>
+          </Box>
+        </Alert>
+      )}
+      
       {(isUpgrading || anyUpgrading) && (
         <Box sx={{ width: '100%', mb: 2 }}>
           <LinearProgress 
@@ -172,11 +225,13 @@ const SelectedPackagesPanel = () => {
           {selectedPackageObjects.map(pkg => {
             const isPackageUpgrading = upgrading[pkg.id];
             const needsUpgrade = pkg.latestVersion && pkg.currentVersion !== pkg.latestVersion;
+            const isMajorUpgrade = needsUpgrade && isMajorVersionUpgrade(pkg.currentVersion, pkg.latestVersion);
             
             return (
               <Tooltip 
                 key={pkg.id} 
                 title={isPackageUpgrading ? "Upgrading..." : 
+                       isMajorUpgrade ? "Major version upgrade - manual update recommended" :
                        needsUpgrade ? "Update available" : 
                        "Up to date"}
               >
@@ -187,6 +242,7 @@ const SelectedPackagesPanel = () => {
                     mb: 1,
                     borderRadius: '4px',
                     backgroundColor: isPackageUpgrading ? '#e0f2fe' :
+                                    isMajorUpgrade ? '#fef3c7' :
                                     needsUpgrade ? '#fee2e2' : 
                                     '#dcfce7',
                     '& .MuiChip-label': {
