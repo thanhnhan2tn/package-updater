@@ -51,6 +51,35 @@ class ProjectController {
       res.status(500).json({ error: 'Failed to get project' });
     }
   }
+
+  /**
+   * Pull updates from main branch
+   */
+  async checkForUpdates(req, res) {
+    try {
+      const { projectName } = req.params;
+      await projectService.checkForUpdates(projectName);
+      res.json({ success: true });
+    } catch (error) {
+      Logger.error('Error in checkForUpdates controller', error);
+      res.status(500).json({ error: 'Failed to check updates', message: error.message });
+    }
+  }
+
+  /**
+   * Commit package fixes to new branch
+   */
+  async commitPackageFix(req, res) {
+    try {
+      const { projectName } = req.params;
+      const { summary } = req.body;
+      const branch = await projectService.commitPackageFix(projectName, summary);
+      res.json({ success: true, branch });
+    } catch (error) {
+      Logger.error('Error in commitPackageFix controller', error);
+      res.status(500).json({ error: 'Failed to commit fix', message: error.message });
+    }
+  }
 }
 
 module.exports = new ProjectController();

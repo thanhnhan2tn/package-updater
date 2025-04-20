@@ -17,4 +17,18 @@ router.get('/projects', projectController.getAllProjects);
  */
 router.get('/project/:projectName', projectController.getProjectByName);
 
+/**
+ * @route   GET /api/project/:projectName/check-updates
+ * @desc    Pull latest changes from main branch
+ * @access  Public
+ */
+router.get('/project/:projectName/check-updates', projectController.checkForUpdates);
+
+/**
+ * @route   POST /api/project/:projectName/commit-fix
+ * @desc    Commit package fixes to a new branch
+ * @access  Public
+ */
+router.post('/project/:projectName/commit-fix', projectController.commitPackageFix);
+
 module.exports = router;

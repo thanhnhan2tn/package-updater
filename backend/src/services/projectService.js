@@ -172,6 +172,44 @@ class ProjectService {
   hasRemoteRepository(project) {
     return project && project.remote && typeof project.remote === 'string';
   }
+
+  /**
+   * Check for updates on main branch and pull latest
+   * @param {string} projectName
+   * @returns {Promise<boolean>}
+   */
+  async checkForUpdates(projectName) {
+    const project = await this.getProjectByName(projectName);
+    if (!project) throw new Error('Project not found');
+    const cwd = fileService.resolvePath(project.path);
+    const branch = project.mainBranch || 'main';
+    // Checkout main branch
+    await execPromise(`git checkout ${branch}`, { cwd });
+    // Pull latest
+    await execPromise('git pull', { cwd });
+    return true;
+  }
+
+  /**
+   * Commit package fixes to a new branch
+   * @param {string} projectName
+   * @param {string} summary
+   * @returns {Promise<string>} - New branch name
+   */
+  async commitPackageFix(projectName, summary) {
+    const project = await this.getProjectByName(projectName);
+    if (!project) throw new Error('Project not found');
+    const cwd = fileService.resolvePath(project.path);
+    const branch = `fix/bump-packages-${summary}`;
+    // Create and checkout new branch
+    await execPromise(`git checkout -b ${branch}`, { cwd });
+    // Stage changes
+    await execPromise('git add -A', { cwd });
+    // Commit
+    const message = `Bump packages: ${summary}`;
+    await execPromise(`git commit -m "${message}"`, { cwd });
+    return branch;
+  }
 }
 
 module.exports = new ProjectService();

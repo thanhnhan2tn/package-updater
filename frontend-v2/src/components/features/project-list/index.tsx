@@ -2,16 +2,19 @@
 
 import type { Project } from "@/types/dependency"
 import { Card, CardContent } from "@/components/ui/card"
-import { Folder, GitBranch } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Folder, GitBranch, RefreshCw, GitCommit } from "lucide-react"
 import { EmptyState } from "@/components/ui/empty-state"
 
 interface ProjectListProps {
   projects: Project[]
   selectedProject: string | null
   onSelectProject: (projectId: string) => void
+  onCheckUpdates: (projectId: string) => void
+  onCommitChange: (projectId: string) => void
 }
 
-export function ProjectList({ projects, selectedProject, onSelectProject }: ProjectListProps) {
+export function ProjectList({ projects, selectedProject, onSelectProject, onCheckUpdates, onCommitChange }: ProjectListProps) {
   if (projects.length === 0) {
     return (
       <EmptyState
@@ -50,6 +53,14 @@ export function ProjectList({ projects, selectedProject, onSelectProject }: Proj
                       : project.path}
                   </span>
                 </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" size="sm" onClick={() => onCheckUpdates(project.id)}>
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => onCommitChange(project.id)}>
+                  <GitCommit className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </CardContent>

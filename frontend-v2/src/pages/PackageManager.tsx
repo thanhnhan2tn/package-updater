@@ -11,7 +11,7 @@ import { Loader2, RefreshCw } from "lucide-react"
 import { CardHeader } from "../components/ui/card-header"
 import { Tabs } from "../components/ui/tabs"
 import { toast } from "../hooks/use-toast"
-import { fetchProjects as fetchProjectsService, fetchPackages, fetchPackageVersion, upgradePackage } from "../services/api"
+import { fetchProjects as fetchProjectsService, fetchPackages, fetchPackageVersion, upgradePackage, checkForUpdates, commitPackageFix } from "../services/api"
 import { fetchDockerImages as fetchDockerImagesService, upgradeDockerImage } from "../services/api"
 import type { Dependency, DockerImage, Project } from "../types/dependency"
 
@@ -216,6 +216,13 @@ export function PackageManager() {
       await Promise.all(
         selectedPackages.map((pkg) => upgradePackage(pkg.project, pkg))
       )
+      // commit package fixes
+      const project = projects.find(p => p.id === depSelectedProject)
+      if (project) {
+        const summary = selectedPackages.map(p => p.name).join('-')
+        const res = await commitPackageFix(project.name, summary)
+        toast({ title: "Commit created", description: `Branch ${res.branch}` })
+      }
       toast({
         title: "Packages upgraded",
         description: `Upgraded ${selectedPackages.length} packages`,
@@ -311,6 +318,32 @@ export function PackageManager() {
     })
   }
 
+  const handleCheckUpdates = async (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+    try {
+      await checkForUpdates(project.name);
+      toast({ title: "Codebase updated", description: `Pulled latest changes for ${project.name}` });
+      // reload dependencies and images
+      if (depSelectedProject === projectId) fetchDependencies(project.name);
+      if (dockerSelectedProject === projectId) fetchDockerImages(project.name);
+    } catch (error: any) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    }
+  }
+
+  const handleCommitChange = async (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+    const summary = selectedPackages.map(p => p.name).join('-');
+    try {
+      const res = await commitPackageFix(project.name, summary);
+      toast({ title: "Commit created", description: `Branch ${res.branch}` });
+    } catch (error: any) {
+      toast({ title: "Commit failed", description: error.message, variant: "destructive" });
+    }
+  }
+
   useEffect(() => {
     if (activeTab === "dependencies" && depSelectedProject !== dockerSelectedProject && depSelectedProject) {
       const project = projects.find((p) => p.id === depSelectedProject)
@@ -368,6 +401,8 @@ export function PackageManager() {
             projects={projects}
             selectedProject={activeTab === "dependencies" ? depSelectedProject : dockerSelectedProject}
             onSelectProject={activeTab === "dependencies" ? handleDepProjectSelect : handleDockerProjectSelect}
+            onCheckUpdates={handleCheckUpdates}
+            onCommitChange={handleCommitChange}
           />
         </div>
 

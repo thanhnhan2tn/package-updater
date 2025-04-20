@@ -84,3 +84,16 @@ export const upgradeDockerImage = async (projectName: string, payload: any) => {
   const response = await axios.post(`${DOCKER_API_URL}/upgrade/${projectName}`, payload);
   return response.data;
 };
+
+export const checkForUpdates = async (projectName: string) => {
+  const response = await axios.get(`${API_URL}/project/${encodeURIComponent(projectName)}/check-updates`);
+  return response.data;
+};
+
+export const commitPackageFix = async (projectName: string, summary: string) => {
+  const response = await axios.post(
+    `${API_URL}/project/${encodeURIComponent(projectName)}/commit-fix`,
+    { summary }
+  );
+  return response.data;
+};
