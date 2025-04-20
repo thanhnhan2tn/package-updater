@@ -8,3 +8,5 @@ export const prioritizedPackages = [
 ]
 
 export const prioritizedDockerImages = ["node", "nginx", "postgres", "redis", "mongodb"]
+
+export const API_URL = 'http://localhost:3001/api';

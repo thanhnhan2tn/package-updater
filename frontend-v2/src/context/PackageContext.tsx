@@ -7,7 +7,7 @@ import {
   fetchPackageVersion,
   upgradePackage,
 } from '@/services/api'
-import { fetchDockerImages as fetchDockerImagesService, upgradeDockerImage } from '@/services/dockerService'
+import { fetchDockerImages as fetchDockerImagesService, upgradeDockerImage } from '@/services/api'
 import { toast } from '@/components/ui/use-toast'
 
 interface PackageContextType {
