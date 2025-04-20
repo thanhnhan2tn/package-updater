@@ -3,8 +3,9 @@
 import type { Project } from "@/types/dependency"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Folder, GitBranch, RefreshCw, GitCommit } from "lucide-react"
+import { Folder, GitBranch, FolderSync, GitPullRequest } from "lucide-react"
 import { EmptyState } from "@/components/ui/empty-state"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface ProjectListProps {
   projects: Project[]
@@ -12,9 +13,10 @@ interface ProjectListProps {
   onSelectProject: (projectId: string) => void
   onCheckUpdates: (projectId: string) => void
   onCommitChange: (projectId: string) => void
+  canCommitChange: (projectId: string) => boolean
 }
 
-export function ProjectList({ projects, selectedProject, onSelectProject, onCheckUpdates, onCommitChange }: ProjectListProps) {
+export function ProjectList({ projects, selectedProject, onSelectProject, onCheckUpdates, onCommitChange, canCommitChange }: ProjectListProps) {
   if (projects.length === 0) {
     return (
       <EmptyState
@@ -55,12 +57,42 @@ export function ProjectList({ projects, selectedProject, onSelectProject, onChec
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm" onClick={() => onCheckUpdates(project.id)}>
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => onCommitChange(project.id)}>
-                  <GitCommit className="h-4 w-4" />
-                </Button>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      className="border border-muted-foreground"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onCheckUpdates(project.id)}
+                    >
+                      <FolderSync className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <span className="text-sm font-medium">Fetch updates</span>
+                  </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                {canCommitChange(project.id) && (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          className="border border-muted-foreground"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onCommitChange(project.id)}
+                        >
+                          <GitPullRequest className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <span className="text-sm font-medium">Commit changes</span>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
             </div>
           </CardContent>

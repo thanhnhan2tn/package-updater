@@ -200,11 +200,22 @@ class ProjectService {
     const project = await this.getProjectByName(projectName);
     if (!project) throw new Error('Project not found');
     const cwd = fileService.resolvePath(project.path);
-    const branch = `fix/bump-packages-${summary}`;
+    // Check if the directory exists and is a git repository
+    try {
+      await execPromise('git status', { cwd });
+    } catch (error) {
+      return `Directory exists but is not a git repository: ${cwd}`;
+    }
     // Create and checkout new branch
+    const branch = `fix/bump-packages-${summary}`;
     await execPromise(`git checkout -b ${branch}`, { cwd });
     // Stage changes
     await execPromise('git add -A', { cwd });
+    // Check if there are any changes to commit
+    const { stdout } = await execPromise('git status --porcelain', { cwd });
+    if (!stdout.trim()) {
+      return `No changes to commit in ${cwd}`;
+    }
     // Commit
     const message = `Bump packages: ${summary}`;
     await execPromise(`git commit -m "${message}"`, { cwd });

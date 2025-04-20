@@ -344,6 +344,17 @@ export function PackageManager() {
     }
   }
 
+  // Determine if commit button should show for a project
+  const canCommitChange = (projectId: string) => {
+    if (activeTab === "dependencies") {
+      return depSelectedProject === projectId && selectedPackages.length > 0;
+    }
+    if (activeTab === "docker") {
+      return dockerSelectedProject === projectId && selectedImages.length > 0;
+    }
+    return false;
+  }
+
   useEffect(() => {
     if (activeTab === "dependencies" && depSelectedProject !== dockerSelectedProject && depSelectedProject) {
       const project = projects.find((p) => p.id === depSelectedProject)
@@ -403,6 +414,7 @@ export function PackageManager() {
             onSelectProject={activeTab === "dependencies" ? handleDepProjectSelect : handleDockerProjectSelect}
             onCheckUpdates={handleCheckUpdates}
             onCommitChange={handleCommitChange}
+            canCommitChange={canCommitChange}
           />
         </div>
 
