@@ -10,3 +10,7 @@ node_modules
 
 # Dependency Manager Template
 dependency-manager-template
+
+# Projects
+projects/*
+!projects/projects.json
