@@ -1,4 +1,4 @@
-import { Toaster } from "./components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster"
 import { PackageManager } from "./pages/PackageManager"
 import { PackageProvider } from "./context/PackageContext"
 
