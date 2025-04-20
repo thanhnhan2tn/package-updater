@@ -1,7 +1,7 @@
 {
   "name": "check-update",
   "private": true,
-  "workspaces": ["backend", "frontend"],
+  "workspaces": ["backend", "frontend-v2"],
   "scripts": {
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "prettier --write .",

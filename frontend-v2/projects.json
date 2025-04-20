@@ -1,0 +1,62 @@
+[
+  {
+    "id": "project1",
+    "name": "Project 1",
+    "path": "./projects/project1",
+    "gitUrl": "https://github.com/example/project1.git"
+  },
+  {
+    "id": "project2",
+    "name": "Project 2",
+    "path": "./projects/project2",
+    "gitUrl": "https://github.com/example/project2.git"
+  },
+  {
+    "id": "project3",
+    "name": "Project 3",
+    "path": "./projects/project3",
+    "gitUrl": "https://github.com/example/project3.git"
+  },
+  {
+    "id": "project4",
+    "name": "Project 4",
+    "path": "./projects/project4",
+    "gitUrl": "https://github.com/example/project4.git"
+  },
+  {
+    "id": "project5",
+    "name": "Project 5",
+    "path": "./projects/project5",
+    "gitUrl": "https://github.com/example/project5.git"
+  },
+  {
+    "id": "project6",
+    "name": "Project 6",
+    "path": "./projects/project6",
+    "gitUrl": "https://github.com/example/project6.git"
+  },
+  {
+    "id": "project7",
+    "name": "Project 7",
+    "path": "./projects/project7",
+    "gitUrl": "https://github.com/example/project7.git"
+  },
+  {
+    "id": "project8",
+    "name": "Project 8",
+    "path": "./projects/project8",
+    "gitUrl": "https://github.com/example/project8.git"
+  },
+  {
+    "id": "project9",
+    "name": "Project 9",
+    "path": "./projects/project9",
+    "gitUrl": "https://github.com/example/project9.git"
+  },
+  {
+    "id": "project10",
+    "name": "Project 10",
+    "path": "./projects/project10",
+    "gitUrl": "https://github.com/example/project10.git"
+  }
+]

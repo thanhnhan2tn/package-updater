@@ -1,0 +1,34 @@
+[
+  {
+    "name": "project1",
+    "path": "./projects/project1",
+    "frontend": {
+      "path": "./projects/project1/frontend/package.json",
+      "dockerfile": "./projects/project1/frontend/Dockerfile"
+    },
+    "server": {
+      "path": "./projects/project1/server/package.json",
+      "dockerfile": "./projects/project1/server/Dockerfile"
+    }
+  },
+  {
+    "name": "project2",
+    "path": "./projects/project2",
+    "frontend": {
+      "path": "./projects/project2/frontend/package.json",
+      "dockerfile": "./projects/project2/frontend/Dockerfile"
+    },
+    "server": {
+      "path": "./projects/project2/server/package.json",
+      "dockerfile": "./projects/project2/server/Dockerfile"
+    }
+  },
+  {
+    "name": "project3",
+    "remote": "https://github.com/thanhnhan2tn/yolo-project.git",
+    "path": "./projects/project3",
+    "frontend": {
+      "path": "./projects/project3/frontend/package.json"
+    }
+  }
+]

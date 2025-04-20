@@ -13,7 +13,8 @@ class PackageController {
    */
   async getAllPackages(req, res) {
     try {
-      const packages = await packageService.getAllPackages();
+      const { projectName } = req.query;
+      const packages = await packageService.getAllPackages(projectName);
       res.json(packages);
     } catch (error) {
       Logger.error('Error getting packages', error);

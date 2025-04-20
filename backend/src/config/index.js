@@ -21,7 +21,7 @@ const config = {
   // File paths
   paths: {
     root: path.resolve(__dirname, '../../..'),
-    projects: path.resolve(__dirname, '../../../projects.json'),
+    projects: path.resolve(__dirname, '../../../projects/projects.json'),
   },
   
   // Package manager configuration

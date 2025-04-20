@@ -18,8 +18,8 @@ class CommandService {
     try {
       Logger.debug(`Executing command: ${command} in ${directory}`);
       // dynamically import execa (ESM) at runtime
-      const { execa } = await import('execa');
-      const result = await execa.command(command, { cwd: directory, shell: true });
+      const { execaCommand } = await import('execa');
+      const result = await execaCommand(command, { cwd: directory, shell: true });
       return {
         success: true,
         stdout: result.stdout,

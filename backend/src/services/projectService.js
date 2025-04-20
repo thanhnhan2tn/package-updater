@@ -22,6 +22,10 @@ class ProjectService {
       
       // Process any remote repositories
       for (const project of projects || []) {
+        if (!project.id) {
+          project.id = path.basename(project.path);
+        }
+        
         if (this.hasRemoteRepository(project)) {
           await this.ensureProjectCloned(project);
         }

@@ -33,16 +33,21 @@ class PackageService {
   }
 
   /**
-   * Get all packages from all projects
+   * Get all packages from selected projects
+   * @param {string} [projectName] - Optional project name to only get packages for
    * @returns {Promise<Array>} - List of packages
    */
-  async getAllPackages() {
+  async getAllPackages(projectName) {
     try {
       const projects = await projectService.getProjects();
+      let selectedProjects = projects;
+      if (projectName) {
+        selectedProjects = projects.filter(project => project.name === projectName);
+      }
       const packages = [];
       let idCounter = 1;
 
-      for (const project of projects) {
+      for (const project of selectedProjects) {
         // Get frontend dependencies
         const frontendPath = projectService.getPackageJsonPath(project, 'frontend');
         if (frontendPath) {
