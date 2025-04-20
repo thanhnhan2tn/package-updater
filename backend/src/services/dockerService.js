@@ -5,6 +5,10 @@ const fileService = require('./fileService');
 const projectService = require('./projectService');
 const axios = require('axios');
 
+// Cache Docker Hub tags
+const IMAGE_TAG_TTL = 60000; // 60s TTL
+const versionCache = new Map(); // imageName -> { timestamp, version }
+
 /**
  * Service for Docker operations
  */
@@ -90,6 +94,12 @@ class DockerService {
     try {
       // For Docker Hub images
       if (!imageName.includes('/') || imageName.split('/').length === 2) {
+        // cache check
+        const now = Date.now();
+        const cacheEntry = versionCache.get(imageName);
+        if (cacheEntry && now - cacheEntry.timestamp < IMAGE_TAG_TTL) {
+          return cacheEntry.version;
+        }
         const [namespace, repo] = imageName.includes('/') 
           ? imageName.split('/') 
           : ['library', imageName];
@@ -122,7 +132,11 @@ class DockerService {
                 return b.name.localeCompare(a.name);
               });
             
-            return tags.length > 0 ? tags[0].name : 'latest';
+            if (tags.length > 0) {
+              const latest = tags[0].name;
+              versionCache.set(imageName, { timestamp: Date.now(), version: latest });
+              return latest;
+            }
           }
         } catch (axiosError) {
           Logger.error(`Error fetching tags for ${namespace}/${repo}:`, axiosError.message);

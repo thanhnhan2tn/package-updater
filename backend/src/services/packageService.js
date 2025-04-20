@@ -38,58 +38,42 @@ class PackageService {
    * @returns {Promise<Array>} - List of packages
    */
   async getAllPackages(projectName) {
-    try {
-      const projects = await projectService.getProjects();
-      let selectedProjects = projects;
-      if (projectName) {
-        selectedProjects = projects.filter(project => project.name === projectName);
-      }
-      const packages = [];
-      let idCounter = 1;
-
-      for (const project of selectedProjects) {
-        // Get frontend dependencies
-        const frontendPath = projectService.getPackageJsonPath(project, 'frontend');
-        if (frontendPath) {
-          const frontendPackage = await this.readPackageJson(frontendPath);
-          if (frontendPackage && frontendPackage.dependencies) {
-            for (const [name, version] of Object.entries(frontendPackage.dependencies)) {
-              packages.push({
-                id: `pkg-${idCounter++}`,
-                project: project.name,
-                type: 'frontend',
-                name,
-                currentVersion: version.replace(/[\^~]/g, ''),
-                latestVersion: null
-              });
-            }
-          }
-        }
-
-        // Get server dependencies
-        const serverPath = projectService.getPackageJsonPath(project, 'server');
-        if (serverPath) {
-          const serverPackage = await this.readPackageJson(serverPath);
-          if (serverPackage && serverPackage.dependencies) {
-            for (const [name, version] of Object.entries(serverPackage.dependencies)) {
-              packages.push({
-                id: `pkg-${idCounter++}`,
-                project: project.name,
-                type: 'server',
-                name,
-                currentVersion: version.replace(/[\^~]/g, ''),
-                latestVersion: null
-              });
-            }
-          }
-        }
-      }
-
-      return packages;
-    } catch (error) {
-      Logger.error('Error getting all packages', error);
-      return [];
+    // Serve from cache if valid and no filter
+    const now = Date.now();
+    if (!projectName && packagesCache.data.length && (now - packagesCache.timestamp) < PACKAGE_CACHE_TTL) {
+      return packagesCache.data;
     }
+    // Build fresh list
+    const projects = await projectService.getProjects();
+    let idCounter = 1;
+    const list = [];
+    // helper to add dependencies
+    const addDeps = async (pkgJson, type, projectName) => {
+      if (pkgJson && pkgJson.dependencies) {
+        Object.entries(pkgJson.dependencies).forEach(([name, version]) => {
+          list.push({
+            id: `pkg-${idCounter++}`,
+            project: projectName,
+            type,
+            name,
+            currentVersion: version.replace(/[\^~]/g, ''),
+            latestVersion: null
+          });
+        });
+      }
+    };
+    for (const project of projects) {
+      if (projectName && project.name !== projectName) continue;
+      const fpath = projectService.getPackageJsonPath(project, 'frontend');
+      if (fpath) await addDeps(await this.readPackageJson(fpath), 'frontend', project.name);
+      const spath = projectService.getPackageJsonPath(project, 'server');
+      if (spath) await addDeps(await this.readPackageJson(spath), 'server', project.name);
+    }
+    // update cache if global
+    if (!projectName) {
+      packagesCache = { timestamp: now, data: list, idMap: new Map(list.map(p => [p.id, p])) };
+    }
+    return list;
   }
 
   /**
@@ -99,8 +83,9 @@ class PackageService {
    */
   async getPackageVersion(id) {
     try {
-      const packages = await this.getAllPackages();
-      const pkg = packages.find(p => p.id === id);
+      // ensure cache loaded
+      await this.getAllPackages();
+      const pkg = packagesCache.idMap.get(id);
       
       if (!pkg) {
         return null;
@@ -127,17 +112,11 @@ class PackageService {
    */
   async processDependencies(dependencies) {
     if (!dependencies) return [];
-    
-    const results = [];
-    for (const [name, version] of Object.entries(dependencies)) {
-      const latestVersion = await getLatestVersion(name);
-      results.push({
-        name,
-        currentVersion: version.replace(/[\^~]/g, ''),
-        latestVersion
-      });
-    }
-    return results;
+    return Promise.all(Object.entries(dependencies).map(async ([name, version]) => ({
+      name,
+      currentVersion: version.replace(/[\^~]/g, ''),
+      latestVersion: await getLatestVersion(name)
+    })));
   }
 
   /**
@@ -219,19 +198,18 @@ class PackageService {
         throw new Error(`Package ${name} not found in dependencies or devDependencies`);
       }
 
-      // Write updated package.json
-      const writeSuccess = await fileService.writeJsonFile(packageJsonPath, packageJson);
-      if (!writeSuccess) {
-        throw new Error('Failed to write updated package.json');
-      }
+      // atomic write
+      const tmp = `${packageJsonPath}.tmp`;
+      await fs.writeFile(tmp, JSON.stringify(packageJson, null, 2));
+      await fs.rename(tmp, packageJsonPath);
 
       // Get the directory containing the package.json
       const projectDir = fileService.getDirectory(packageJsonPath);
       
-      // Install the updated package
-      const installResult = await commandService.installDependencies(projectDir);
-      if (!installResult.success) {
-        throw new Error(`Failed to install dependencies: ${installResult.error}`);
+      // only install if version changed
+      if (packageInfo.latestVersion !== packageInfo.currentVersion) {
+        const installResult = await commandService.installDependencies(projectDir);
+        if (!installResult.success) throw new Error(`Failed to install dependencies: ${installResult.error}`);
       }
 
       return {
@@ -251,5 +229,8 @@ class PackageService {
     }
   }
 }
+
+const PACKAGE_CACHE_TTL = 60000; // 60 seconds
+let packagesCache = { timestamp: 0, data: [], idMap: new Map() };
 
 module.exports = new PackageService(); 
