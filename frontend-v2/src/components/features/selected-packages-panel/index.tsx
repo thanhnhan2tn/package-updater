@@ -19,6 +19,8 @@ export function SelectedPackagesPanel({ packages, onRemove, onUpgrade, onCheckAl
     return null
   }
 
+  const hasMajor = packages.some(pkg => pkg.majorUpgrade)
+
   const badgeItems = packages.map((pkg) => ({
     id: `${pkg.project}-${pkg.type}-${pkg.name}`,
     label: <span className="font-medium">{pkg.name}</span>,
@@ -46,7 +48,7 @@ export function SelectedPackagesPanel({ packages, onRemove, onUpgrade, onCheckAl
             <Button size="sm" onClick={onCheckAll} disabled={upgrading} className="flex items-center gap-1">
               Check Updates
             </Button>
-            <Button size="sm" onClick={onUpgrade} disabled={upgrading || packages.some(p => p.latestVersion === p.currentVersion)} className="flex items-center gap-1">
+            <Button size="sm" onClick={onUpgrade} disabled={upgrading || hasMajor} className="flex items-center gap-1">
               <ArrowUp className="h-3.5 w-3.5" />
               Apply Fix
             </Button>
@@ -55,6 +57,9 @@ export function SelectedPackagesPanel({ packages, onRemove, onUpgrade, onCheckAl
         <BadgeList items={badgeItems} onRemove={handleRemove} maxHeight="24" />
         {packages.some(p => p.latestVersion === p.currentVersion) && (
           <p className="text-gray-600 text-xs mt-1">Click “Check Updates” to fetch latest versions</p>
+        )}
+        {hasMajor && (
+          <p className="text-yellow-700 text-xs mt-1">Major version bump detected, please upgrade these manually.</p>
         )}
       </CardContent>
     </Card>
