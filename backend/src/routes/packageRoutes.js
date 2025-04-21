@@ -11,11 +11,11 @@ const router = express.Router();
 router.get('/packages', packageController.getAllPackages);
 
 /**
- * @route   GET /api/package-version/:id
- * @desc    Get version information for a specific package
+ * @route   GET /api/package-version
+ * @desc    Get version information for a specific package within a project
  * @access  Public
  */
-router.get('/package-version/:id', packageController.getPackageVersion);
+router.get('/package-version', packageController.getPackageVersion);
 
 /**
  * @route   GET /api/dependencies

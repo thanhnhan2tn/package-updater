@@ -33,8 +33,9 @@ export const fetchPackages = (projectName: string | null) => {
 };
 
 
-export const fetchPackageVersion = (id: string) => {
-  return fetchApi(`/package-version/${id}`);
+export const fetchPackageVersion = (projectName: string, name: string) => {
+  const params = `?projectName=${encodeURIComponent(projectName)}&name=${encodeURIComponent(name)}`
+  return fetchApi(`/package-version${params}`);
 };
 
 export const upgradePackage = (projectName: string, packageInfo: any) => {

@@ -63,11 +63,11 @@ export function useDependencies(initialProjectId: string | null = null) {
   }
 
   const handleCheckPackage = async (pkg: Dependency) => {
-    const idKey = pkg.id
-    setChecking((prev) => ({ ...prev, [idKey]: true }))
+    const key = `${pkg.project}-${pkg.name}`
+    setChecking((prev) => ({ ...prev, [key]: true }))
 
     try {
-      const result = await fetchPackageVersion(pkg.id)
+      const result = await fetchPackageVersion(pkg.project, pkg.name)
       const latest = result.latestVersion ?? pkg.currentVersion
       const updatedPkg = { ...pkg, latestVersion: latest, outdated: latest !== pkg.currentVersion }
       setDependencies((prev) => prev.map((item) => (item.id === pkg.id ? updatedPkg : item)))
@@ -78,7 +78,7 @@ export function useDependencies(initialProjectId: string | null = null) {
     } finally {
       setChecking((prev) => {
         const clone = { ...prev }
-        delete clone[idKey]
+        delete clone[key]
         return clone
       })
     }

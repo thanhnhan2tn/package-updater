@@ -77,30 +77,30 @@ class PackageService {
   }
 
   /**
-   * Get version information for a specific package
-   * @param {string} id - Package ID
+   * Get version information for a specific package by name
+   * @param {string} projectName - Project name
+   * @param {string} name - Package name
    * @returns {Promise<Object|null>} - Package version information or null if not found
    */
-  async getPackageVersion(id) {
+  async getPackageVersion(projectName, name) {
     try {
-      // ensure cache loaded
-      await this.getAllPackages();
-      const pkg = packagesCache.idMap.get(id);
-      
+      // load packages for the project
+      const packages = await this.getAllPackages(projectName);
+      // find matching package
+      const pkg = packages.find(p => p.name === name && p.project === projectName);
       if (!pkg) {
         return null;
       }
-      
       const latestVersion = await getLatestVersion(pkg.name);
-      
       return {
-        id: pkg.id,
+        project: pkg.project,
+        type: pkg.type,
         name: pkg.name,
         currentVersion: pkg.currentVersion,
         latestVersion
       };
     } catch (error) {
-      Logger.error(`Error getting package version for ${id}`, error);
+      Logger.error(`Error getting package version for ${name} in project ${projectName}`, error);
       return null;
     }
   }

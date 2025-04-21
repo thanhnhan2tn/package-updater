@@ -127,10 +127,14 @@ export function PackageProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const checkPackage = useCallback(async (pkg: Dependency) => {
-    const key = pkg.id
+    if (!activeProjectId) return
+    const project = projects.find((p) => p.id === activeProjectId)
+    if (!project) return
+    const projectName = project.name
+    const key = `${projectName}-${pkg.name}`
     setCheckingPackages((c) => ({ ...c, [key]: true }))
     try {
-      const res = await fetchPackageVersion(pkg.id)
+      const res = await fetchPackageVersion(projectName, pkg.name)
       const latest = res.latestVersion || pkg.currentVersion
       const currMajor = Number(pkg.currentVersion.split('.')[0])
       const newMajor = Number(latest.split('.')[0])
@@ -142,9 +146,13 @@ export function PackageProvider({ children }: { children: ReactNode }) {
     } catch (e:any) {
       toast({ title: 'Check package failed', description: e.message, variant: 'destructive' })
     } finally {
-      setCheckingPackages((c) => ({ ...c, [key]: false }))
+      setCheckingPackages((c) => {
+        const clone = { ...c }
+        delete clone[key]
+        return clone
+      })
     }
-  }, [])
+  }, [activeProjectId, projects])
 
   const checkAllPackages = useCallback(async () => {
     await Promise.all(selectedPackages.map(checkPackage))

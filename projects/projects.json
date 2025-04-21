@@ -1,6 +1,22 @@
 [
   {
-    "name": "project yolo",
+    "name": "project1",
+    "remote": "https://github.com/thanhnhan2tn/yolo-project.git",
+    "path": "./projects/project1",
+    "frontend": {
+      "path": "./projects/project2/frontend/package.json"
+    }
+  },
+  {
+    "name": "project2",
+    "remote": "https://github.com/thanhnhan2tn/yolo-project.git",
+    "path": "./projects/project2",
+    "frontend": {
+      "path": "./projects/project2/frontend/package.json"
+    }
+  },
+  {
+    "name": "project3",
     "remote": "https://github.com/thanhnhan2tn/yolo-project.git",
     "path": "./projects/project3",
     "frontend": {

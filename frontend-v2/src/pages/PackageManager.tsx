@@ -138,10 +138,14 @@ export function PackageManager() {
   }
 
   const handleCheckPackage = async (pkg: Dependency) => {
-    const idKey = pkg.id
+    if (!depSelectedProject) return
+    const project = projects.find((p) => p.id === depSelectedProject)
+    if (!project) return
+    const projectName = project.name
+    const idKey = `${projectName}-${pkg.name}`
     setCheckingPackages((prev) => ({ ...prev, [idKey]: true }))
     try {
-      const result = await fetchPackageVersion(pkg.id)
+      const result = await fetchPackageVersion(projectName, pkg.name)
       const latest = result.latestVersion ?? pkg.currentVersion
       // detect major version upgrade
       const currMajor = Number(pkg.currentVersion.split('.')[0])
@@ -216,13 +220,6 @@ export function PackageManager() {
       await Promise.all(
         selectedPackages.map((pkg) => upgradePackage(pkg.project, pkg))
       )
-      // commit package fixes
-      const project = projects.find(p => p.id === depSelectedProject)
-      if (project) {
-        const summary = selectedPackages.map(p => p.name).join('-')
-        const res = await commitPackageFix(project.name, summary)
-        toast({ title: "Commit created", description: `Branch ${res.branch}` })
-      }
       toast({
         title: "Packages upgraded",
         description: `Upgraded ${selectedPackages.length} packages`,

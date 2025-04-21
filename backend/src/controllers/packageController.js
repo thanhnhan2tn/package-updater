@@ -29,8 +29,8 @@ class PackageController {
    */
   async getPackageVersion(req, res) {
     try {
-      const { id } = req.params;
-      const packageInfo = await packageService.getPackageVersion(id);
+      const { projectName, name } = req.query;
+      const packageInfo = await packageService.getPackageVersion(projectName, name);
       
       if (!packageInfo) {
         return res.status(404).json({ error: 'Package not found' });
