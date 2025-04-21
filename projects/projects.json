@@ -1,26 +1,32 @@
 [
   {
-    "name": "project1",
-    "remote": "https://github.com/thanhnhan2tn/yolo-project.git",
-    "path": "./projects/project1",
+    "name": "package-updater",
+    "remote": "https://github.com/thanhnhan2tn/package-updater.git",
+    "path": "../projects/package-updater",
     "frontend": {
-      "path": "./projects/project2/frontend/package.json"
-    }
+      "path": "../projects/package-updater/frontend/package.json"
+    },
+    "server": {
+      "path": "../projects/package-updater/backend/package.json"
+    },
+    "mainBranch": "main"
   },
   {
-    "name": "project2",
-    "remote": "https://github.com/thanhnhan2tn/yolo-project.git",
-    "path": "./projects/project2",
+    "name": "react-boilerplate",
+    "remote": "https://github.com/thanhnhan2tn/react-boilerplate.git",
+    "path": "../projects/react-boilerplate",
     "frontend": {
-      "path": "./projects/project2/frontend/package.json"
-    }
+      "path": "../projects/react-boilerplate/package.json"
+    },
+    "mainBranch": "main"
   },
   {
-    "name": "project3",
-    "remote": "https://github.com/thanhnhan2tn/yolo-project.git",
-    "path": "./projects/project3",
+    "name": "peppercorn",
+    "remote": "https://github.com/Allium-Studio/peppercorn.git",
+    "path": "../projects/peppercorn",
     "frontend": {
-      "path": "./projects/project3/frontend/package.json"
-    }
+      "path": "../projects/peppercorn/Frontend/package.json"
+    },
+    "mainBranch": "main"
   }
 ]

@@ -82,14 +82,18 @@ export function DependencyTable({
       key: "select",
       title: "",
       render: (dep: Dependency) => (
-        <Checkbox checked={isSelected(dep)} onCheckedChange={() => onToggleSelection(dep)} />
+        <Checkbox 
+          data-testid={`package-checkbox-${dep.name}`}
+          checked={isSelected(dep)} 
+          onCheckedChange={() => onToggleSelection(dep)} 
+        />
       ),
     },
     {
       key: "name",
       title: "Package",
       render: (dep: Dependency) => (
-        <div className="font-medium flex items-center gap-1.5">
+        <div className="font-medium flex items-center gap-1.5" data-testid={`package-name-${dep.name}`}>
           {isPrioritized(dep.name) && <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />}
           {dep.name}
         </div>
@@ -98,7 +102,9 @@ export function DependencyTable({
     {
       key: "currentVersion",
       title: "Current Version",
-      render: (dep: Dependency) => dep.currentVersion,
+      render: (dep: Dependency) => (
+        <span data-testid={`current-version-${dep.name}`}>{dep.currentVersion}</span>
+      ),
     },
     {
       key: "latestVersion",
@@ -107,12 +113,12 @@ export function DependencyTable({
         // major bump: manual upgrade required
         if (dep.majorUpgrade) {
           return (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" data-testid={`latest-version-${dep.name}`}>
               <span className="text-red-600 font-bold">{dep.latestVersion}</span>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <AlertTriangle className="h-4 w-4 text-red-600" data-testid={`major-version-warning-${dep.name}`} />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Major version bump—manual upgrade required</p>
@@ -123,17 +129,18 @@ export function DependencyTable({
           )
         }
         if (isChecking(dep)) {
-          return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" data-testid={`checking-loader-${dep.name}`} />
         }
 
         if (onCheckPackage) {
           return (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-testid={`latest-version-${dep.name}`}>
               <span className={dep.outdated ? "text-green-600 font-medium" : ""}>{dep.latestVersion}</span>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
+                      data-testid={`check-package-button-${dep.name}`}
                       variant="ghost"
                       size="icon"
                       onClick={() => onCheckPackage(dep)}
@@ -151,7 +158,14 @@ export function DependencyTable({
           )
         }
 
-        return <span className={dep.outdated ? "text-green-600 font-medium" : ""}>{dep.latestVersion}</span>
+        return (
+          <span 
+            data-testid={`latest-version-${dep.name}`}
+            className={dep.outdated ? "text-green-600 font-medium" : ""}
+          >
+            {dep.latestVersion}
+          </span>
+        )
       },
     },
     {
@@ -192,18 +206,30 @@ export function DependencyTable({
     };
 
     return (
-      <Card className="mb-4 border-primary/20 bg-primary/5">
+      <Card className="mb-4 border-primary/20 bg-primary/5" data-testid="selected-packages-panel">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-medium">Selected Packages ({selectedPackages.length})</h3>
             <div className="flex items-center gap-2">
               {onCheckAllPackages && (
-                <Button size="sm" onClick={onCheckAllPackages} disabled={upgrading} className="flex items-center gap-1">
+                <Button 
+                  data-testid="bulk-check-button"
+                  size="sm" 
+                  onClick={onCheckAllPackages} 
+                  disabled={upgrading} 
+                  className="flex items-center gap-1"
+                >
                   Check Updates
                 </Button>
               )}
               {onUpgradePackages && (
-                <Button size="sm" onClick={onUpgradePackages} disabled={upgrading || hasMajor} className="flex items-center gap-1">
+                <Button 
+                  data-testid="apply-fix-button"
+                  size="sm" 
+                  onClick={onUpgradePackages} 
+                  disabled={upgrading || hasMajor} 
+                  className="flex items-center gap-1"
+                >
                   <ArrowUp className="h-3.5 w-3.5" />
                   Apply Fix
                 </Button>
@@ -215,7 +241,7 @@ export function DependencyTable({
             <p className="text-gray-600 text-xs mt-1">Some selected packages are up to date.</p>
           )}
           {hasMajor && (
-            <p className="text-yellow-700 text-xs mt-1">Major version bump detected, please upgrade these manually.</p>
+            <p className="text-yellow-700 text-xs mt-1" data-testid="major-version-warning">Major version bump detected, please upgrade these manually.</p>
           )}
         </CardContent>
       </Card>
@@ -223,7 +249,7 @@ export function DependencyTable({
   };
 
   return (
-    <div>
+    <div data-testid="dependency-table">
       {selectedPackages.length > 0 && renderSelectedPackagesPanel()}
       <div className="flex justify-end mb-4">
         <FilterDropdown options={filterOptions} value={filter} onChange={setFilter} />
@@ -235,6 +261,7 @@ export function DependencyTable({
         keyExtractor={(dep) => `${dep.project}-${dep.type}-${dep.name}`}
         emptyState={
           <EmptyState
+            data-testid="empty-state"
             title="No dependencies found"
             description="No dependencies found for the selected project and filter."
           />

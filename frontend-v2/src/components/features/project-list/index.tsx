@@ -28,10 +28,12 @@ export function ProjectList({ projects, selectedProject, onSelectProject, onChec
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-testid="project-list">
       {projects.map((project) => (
         <div key={project.id} className="relative">
           <Card
+            data-testid={`project-tile-${project.id}`}
+            data-active={selectedProject === project.id}
             className={`cursor-pointer transition-colors ${
               selectedProject === project.id ? "border-primary bg-primary/5" : ""
             }`}
@@ -49,7 +51,7 @@ export function ProjectList({ projects, selectedProject, onSelectProject, onChec
                   <p className="text-sm font-medium leading-none">{project.name}</p>
                   <div className="flex items-center text-xs text-muted-foreground truncate">
                     <GitBranch className="mr-1 h-3 w-3" />
-                    <span className="truncate">
+                    <span className="truncate" data-testid={`project-path-${project.id}`}>
                       {project.remote
                         ? project.remote
                             .split("/")
@@ -67,6 +69,7 @@ export function ProjectList({ projects, selectedProject, onSelectProject, onChec
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    data-testid={`check-updates-${project.id}`}
                     className="border border-muted-foreground"
                     variant="ghost"
                     size="sm"
@@ -85,6 +88,7 @@ export function ProjectList({ projects, selectedProject, onSelectProject, onChec
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
+                      data-testid={`commit-changes-${project.id}`}
                       className="border border-muted-foreground"
                       variant="ghost"
                       size="sm"

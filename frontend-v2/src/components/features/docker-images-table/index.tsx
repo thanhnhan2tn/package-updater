@@ -90,6 +90,7 @@ export function DockerImagesTable({
       title: "",
       render: (image: DockerImage) => (
         <Checkbox
+          data-testid={`image-checkbox-${image.name}`}
           checked={isSelected(image)}
           onCheckedChange={() => onToggleSelection(image)}
           disabled={image.latestTag === null}
@@ -101,7 +102,7 @@ export function DockerImagesTable({
       title: "Image",
       sortable: true,
       render: (image: DockerImage) => (
-        <div className="font-medium flex items-center gap-1.5">
+        <div className="font-medium flex items-center gap-1.5" data-testid={`image-name-${image.name}`}>
           {isPrioritized(image.name) && <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />}
           {image.name}
         </div>
@@ -111,7 +112,9 @@ export function DockerImagesTable({
       key: "tag",
       title: "Current Tag",
       sortable: true,
-      render: (image: DockerImage) => image.tag,
+      render: (image: DockerImage) => (
+        <span data-testid={`current-tag-${image.name}`}>{image.tag}</span>
+      ),
     },
     {
       key: "latestTag",
@@ -119,7 +122,7 @@ export function DockerImagesTable({
       sortable: true,
       render: (image: DockerImage) => {
         if (isChecking(image)) {
-          return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" data-testid={`checking-loader-${image.name}`} />
         }
 
         if (image.latestTag === null) {
@@ -128,6 +131,7 @@ export function DockerImagesTable({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    data-testid={`check-image-button-${image.name}`}
                     variant="ghost"
                     size="icon"
                     onClick={() => onCheckImage(image)}
@@ -144,7 +148,14 @@ export function DockerImagesTable({
           )
         }
 
-        return <span className={image.outdated ? "text-green-600 font-medium" : ""}>{image.latestTag}</span>
+        return (
+          <span 
+            data-testid={`latest-tag-${image.name}`}
+            className={image.outdated ? "text-green-600 font-medium" : ""}
+          >
+            {image.latestTag}
+          </span>
+        )
       },
     },
     {
@@ -152,7 +163,11 @@ export function DockerImagesTable({
       title: "Registry",
       sortable: true,
       render: (image: DockerImage) => (
-        <Badge variant="outline" className="font-mono text-xs">
+        <Badge 
+          data-testid={`registry-${image.name}`}
+          variant="outline" 
+          className="font-mono text-xs"
+        >
           {image.registry}
         </Badge>
       ),
@@ -188,12 +203,18 @@ export function DockerImagesTable({
     };
 
     return (
-      <Card className="mb-4 border-primary/20 bg-primary/5">
+      <Card className="mb-4 border-primary/20 bg-primary/5" data-testid="selected-images-panel">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-medium">Selected Docker Images ({selectedImages.length})</h3>
             {onUpgradeImages && (
-              <Button size="sm" onClick={onUpgradeImages} disabled={upgrading} className="flex items-center gap-1">
+              <Button 
+                data-testid="upgrade-images-button"
+                size="sm" 
+                onClick={onUpgradeImages} 
+                disabled={upgrading} 
+                className="flex items-center gap-1"
+              >
                 <ArrowUp className="h-3.5 w-3.5" />
                 Apply Fix
               </Button>
@@ -206,7 +227,7 @@ export function DockerImagesTable({
   };
 
   return (
-    <div>
+    <div data-testid="docker-images-table">
       {selectedImages.length > 0 && renderSelectedDockerImagesPanel()}
       <div className="flex justify-end mb-4">
         <FilterDropdown options={filterOptions} value={filter} onChange={setFilter} />
@@ -218,6 +239,7 @@ export function DockerImagesTable({
         keyExtractor={(image) => `${image.projectId}-${image.registry}-${image.name}-${image.tag}`}
         emptyState={
           <EmptyState
+            data-testid="empty-state"
             title="No Docker images found"
             description="No Docker images found for the selected project and filter."
           />
