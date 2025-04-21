@@ -3,23 +3,27 @@
 import { useState } from "react"
 import type { Dependency } from "components/../types/dependency"
 import { DataTable } from "components/../components/ui/data-table"
-import { SearchInput } from "components/../components/ui/search-input"
 import { FilterDropdown } from "components/../components/ui/filter-dropdown"
 import { Checkbox } from "components/../components/ui/checkbox"
 import { Badge } from "components/../components/ui/badge"
-import { Star, RefreshCw, AlertTriangle } from "lucide-react"
+import { Star, RefreshCw, AlertTriangle, ArrowUp } from "lucide-react"
 import { EmptyState } from "components/../components/ui/empty-state"
 import { Button } from "components/../components/ui/button"
 import { Loader2 } from "lucide-react"
 import { prioritizedPackages } from "@/data/config"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "components/../components/ui/tooltip"
+import { Card, CardContent } from "components/../components/ui/card"
+import { BadgeList } from "components/../components/ui/badge-list"
 
 interface DependencyTableProps {
   dependencies: Dependency[]
   selectedPackages: Dependency[]
   onToggleSelection: (pkg: Dependency) => void
   onCheckPackage?: (pkg: Dependency) => void
+  onCheckAllPackages?: () => void
+  onUpgradePackages?: () => void
   checking?: Record<string, boolean>
+  upgrading?: boolean
 }
 
 export function DependencyTable({
@@ -27,9 +31,11 @@ export function DependencyTable({
   selectedPackages,
   onToggleSelection,
   onCheckPackage,
+  onCheckAllPackages,
+  onUpgradePackages,
   checking = {},
+  upgrading = false,
 }: DependencyTableProps) {
-  const [searchTerm, setSearchTerm] = useState("")
   const [filter, setFilter] = useState<string>("all")
 
   const filterOptions = [
@@ -53,12 +59,11 @@ export function DependencyTable({
 
   const filteredDependencies = dependencies
     .filter((dep) => {
-      const matchesSearch = dep.name.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesFilter =
         filter === "all" ||
         (filter === "outdated" && dep.outdated) ||
         (filter === "prioritized" && isPrioritized(dep.name))
-      return matchesSearch && matchesFilter
+      return matchesFilter
     })
     .sort((a, b) => {
       // First sort by prioritized status
@@ -158,15 +163,69 @@ export function DependencyTable({
     },
   ]
 
+  // Function to render the selected packages panel
+  const renderSelectedPackagesPanel = () => {
+    if (selectedPackages.length === 0) return null;
+
+    const hasMajor = selectedPackages.some(pkg => pkg.majorUpgrade);
+
+    const badgeItems = selectedPackages.map((pkg) => {
+      const needsUpgrade = pkg.latestVersion && pkg.currentVersion !== pkg.latestVersion;
+      return {
+        id: `${pkg.project}-${pkg.type}-${pkg.name}`,
+        label: <span className="font-medium">{pkg.name}</span>,
+        description: (
+          <span>
+            {pkg.currentVersion} → {pkg.latestVersion}
+          </span>
+        ),
+        showLoader: upgrading && needsUpgrade,
+      };
+    });
+
+    const handleRemove = (id: string) => {
+      const [projectId, type, name] = id.split("-");
+      const pkg = selectedPackages.find((p) => p.project === projectId && p.type === type && p.name === name);
+      if (pkg) {
+        onToggleSelection(pkg);
+      }
+    };
+
+    return (
+      <Card className="mb-4 border-primary/20 bg-primary/5">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-medium">Selected Packages ({selectedPackages.length})</h3>
+            <div className="flex items-center gap-2">
+              {onCheckAllPackages && (
+                <Button size="sm" onClick={onCheckAllPackages} disabled={upgrading} className="flex items-center gap-1">
+                  Check Updates
+                </Button>
+              )}
+              {onUpgradePackages && (
+                <Button size="sm" onClick={onUpgradePackages} disabled={upgrading || hasMajor} className="flex items-center gap-1">
+                  <ArrowUp className="h-3.5 w-3.5" />
+                  Apply Fix
+                </Button>
+              )}
+            </div>
+          </div>
+          <BadgeList items={badgeItems} onRemove={handleRemove} maxHeight="24" />
+          {selectedPackages.some(p => p.latestVersion === p.currentVersion) && (
+            <p className="text-gray-600 text-xs mt-1">Some selected packages are up to date.</p>
+          )}
+          {hasMajor && (
+            <p className="text-yellow-700 text-xs mt-1">Major version bump detected, please upgrade these manually.</p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-        <SearchInput
-          value={searchTerm}
-          onChange={setSearchTerm}
-          placeholder="Search dependencies..."
-          className="flex-1 w-full"
-        />
+      {selectedPackages.length > 0 && renderSelectedPackagesPanel()}
+      <div className="flex justify-end mb-4">
         <FilterDropdown options={filterOptions} value={filter} onChange={setFilter} />
       </div>
 
@@ -177,11 +236,7 @@ export function DependencyTable({
         emptyState={
           <EmptyState
             title="No dependencies found"
-            description={
-              searchTerm
-                ? `No dependencies match "${searchTerm}"`
-                : "No dependencies found for the selected project and filter."
-            }
+            description="No dependencies found for the selected project and filter."
           />
         }
         footer={

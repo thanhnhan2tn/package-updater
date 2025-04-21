@@ -30,73 +30,77 @@ export function ProjectList({ projects, selectedProject, onSelectProject, onChec
   return (
     <div className="space-y-2">
       {projects.map((project) => (
-        <Card
-          key={project.id}
-          className={`cursor-pointer transition-colors ${
-            selectedProject === project.id ? "border-primary bg-primary/5" : ""
-          }`}
-          onClick={() => onSelectProject(project.id)}
-        >
-          <CardContent className="p-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-                <Folder className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1 space-y-1">
-                <p className="text-sm font-medium leading-none">{project.name}</p>
-                <div className="flex items-center text-xs text-muted-foreground truncate">
-                  <GitBranch className="mr-1 h-3 w-3" />
-                  <span className="truncate">
-                    {project.remote
-                      ? project.remote
-                          .split("/")
-                          .slice(-1)
-                          .join("/")
-                      : project.path}
-                  </span>
+        <div key={project.id} className="relative">
+          <Card
+            className={`cursor-pointer transition-colors ${
+              selectedProject === project.id ? "border-primary bg-primary/5" : ""
+            }`}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelectProject(project.id)
+            }}
+          >
+            <CardContent className="p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+                  <Folder className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <p className="text-sm font-medium leading-none">{project.name}</p>
+                  <div className="flex items-center text-xs text-muted-foreground truncate">
+                    <GitBranch className="mr-1 h-3 w-3" />
+                    <span className="truncate">
+                      {project.remote
+                        ? project.remote
+                            .split("/")
+                            .slice(-1)
+                            .join("/")
+                        : project.path}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
+            </CardContent>
+          </Card>
+          <div className="absolute right-2 top-2">
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    className="border border-muted-foreground"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onCheckUpdates(project.id)}
+                  >
+                    <FolderSync className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <span className="text-sm font-medium">Fetch updates</span>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {canCommitChange(project.id) && (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       className="border border-muted-foreground"
                       variant="ghost"
                       size="sm"
-                      onClick={() => onCheckUpdates(project.id)}
+                      onClick={() => onCommitChange(project.id)}
                     >
-                      <FolderSync className="h-4 w-4" />
+                      <GitPullRequest className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top">
-                    <span className="text-sm font-medium">Fetch updates</span>
+                    <span className="text-sm font-medium">Commit changes</span>
                   </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                {canCommitChange(project.id) && (
-                  <TooltipProvider delayDuration={200}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          className="border border-muted-foreground"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onCommitChange(project.id)}
-                        >
-                          <GitPullRequest className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <span className="text-sm font-medium">Commit changes</span>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        </div>
       ))}
     </div>
   )

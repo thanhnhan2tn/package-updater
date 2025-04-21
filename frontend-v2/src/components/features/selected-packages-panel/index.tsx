@@ -3,7 +3,7 @@
 import type { SelectedPackage } from "@/types/dependency"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowUp } from "lucide-react"
+import { ArrowUp, Loader2 } from "lucide-react"
 import { BadgeList } from "@/components/ui/badge-list"
 
 interface SelectedPackagesPanelProps {
@@ -50,6 +50,9 @@ export function SelectedPackagesPanel({ packages, onRemove, onUpgrade, onCheckAl
             </Button>
             <Button size="sm" onClick={onUpgrade} disabled={upgrading || hasMajor} className="flex items-center gap-1">
               <ArrowUp className="h-3.5 w-3.5" />
+              {
+                upgrading && <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              }
               Apply Fix
             </Button>
           </div>

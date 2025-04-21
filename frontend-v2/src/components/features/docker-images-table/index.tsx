@@ -3,23 +3,26 @@
 import { useState } from "react"
 import type { DockerImage } from "@/types/dependency"
 import { DataTable } from "@/components/ui/data-table"
-import { SearchInput } from "@/components/ui/search-input"
 import { FilterDropdown } from "@/components/ui/filter-dropdown"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Star, RefreshCw } from "lucide-react"
+import { Star, RefreshCw, ArrowUp } from "lucide-react"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import { prioritizedDockerImages } from "@/data/config"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Card, CardContent } from "@/components/ui/card"
+import { BadgeList } from "@/components/ui/badge-list"
 
 interface DockerImagesTableProps {
   dockerImages: DockerImage[]
   selectedImages: DockerImage[]
   onToggleSelection: (image: DockerImage) => void
   onCheckImage: (image: DockerImage) => void
+  onUpgradeImages?: () => void
   checking: Record<string, boolean>
+  upgrading?: boolean
 }
 
 export function DockerImagesTable({
@@ -27,9 +30,10 @@ export function DockerImagesTable({
   selectedImages,
   onToggleSelection,
   onCheckImage,
+  onUpgradeImages,
   checking,
+  upgrading = false,
 }: DockerImagesTableProps) {
-  const [searchTerm, setSearchTerm] = useState("")
   const [filter, setFilter] = useState<string>("all")
 
   const filterOptions = [
@@ -58,22 +62,13 @@ export function DockerImagesTable({
 
   const filteredImages = dockerImages
     .filter((image) => {
-      const lowerSearch = searchTerm.toLowerCase()
-      const name = image.name || ''
-      const tag = image.tag || ''
-      const registry = image.registry || ''
-      const matchesSearch =
-        name.toLowerCase().includes(lowerSearch) ||
-        tag.toLowerCase().includes(lowerSearch) ||
-        registry.toLowerCase().includes(lowerSearch)
-
       const matchesFilter =
         filter === "all" ||
         (filter === "outdated" && image.outdated === true) ||
         (filter === "prioritized" && isPrioritized(image.name)) ||
         (filter === "unchecked" && image.latestTag === null)
 
-      return matchesSearch && matchesFilter
+      return matchesFilter
     })
     .sort((a, b) => {
       // First sort by prioritized status
@@ -164,15 +159,56 @@ export function DockerImagesTable({
     },
   ]
 
+  // Function to render the selected docker images panel
+  const renderSelectedDockerImagesPanel = () => {
+    if (selectedImages.length === 0) return null;
+
+    const badgeItems = selectedImages.map((image) => {
+      const needsUpgrade = image.latestTag && image.tag !== image.latestTag;
+      return {
+        id: `${image.projectId}-${image.registry}-${image.name}-${image.tag}`,
+        label: <span className="font-medium">{image.name}</span>,
+        description: (
+          <span>
+            {image.tag} → {image.latestTag}
+          </span>
+        ),
+        showLoader: upgrading && needsUpgrade,
+      };
+    });
+
+    const handleRemove = (id: string) => {
+      const [projectId, registry, name, tag] = id.split("-");
+      const image = selectedImages.find(
+        (i) => i.projectId === projectId && i.registry === registry && i.name === name && i.tag === tag,
+      );
+      if (image) {
+        onToggleSelection(image);
+      }
+    };
+
+    return (
+      <Card className="mb-4 border-primary/20 bg-primary/5">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-medium">Selected Docker Images ({selectedImages.length})</h3>
+            {onUpgradeImages && (
+              <Button size="sm" onClick={onUpgradeImages} disabled={upgrading} className="flex items-center gap-1">
+                <ArrowUp className="h-3.5 w-3.5" />
+                Apply Fix
+              </Button>
+            )}
+          </div>
+          <BadgeList items={badgeItems} onRemove={handleRemove} maxHeight="24" />
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-        <SearchInput
-          value={searchTerm}
-          onChange={setSearchTerm}
-          placeholder="Search Docker images..."
-          className="flex-1 w-full"
-        />
+      {selectedImages.length > 0 && renderSelectedDockerImagesPanel()}
+      <div className="flex justify-end mb-4">
         <FilterDropdown options={filterOptions} value={filter} onChange={setFilter} />
       </div>
 
@@ -183,11 +219,7 @@ export function DockerImagesTable({
         emptyState={
           <EmptyState
             title="No Docker images found"
-            description={
-              searchTerm
-                ? `No Docker images match "${searchTerm}"`
-                : "No Docker images found for the selected project and filter."
-            }
+            description="No Docker images found for the selected project and filter."
           />
         }
         footer={
