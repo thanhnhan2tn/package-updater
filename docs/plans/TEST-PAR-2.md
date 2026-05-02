@@ -1,13 +1,12 @@
-# Implementation Plan: Add a simple log line to README #2
+# Implementation Plan: Add a simple comment to README #2
 
 ## Spec
-Add a simple log line to the README.md file, such as a status badge or a brief note about the project's development phase.
+Add a simple comment to the README file. The comment should be a single line, e.g., '<!-- This is a test comment -->' or similar, placed at the beginning of the file.
 
 ## Acceptance Criteria
-- README.md has a new line or section with a log message (e.g., '## Status
-This project is actively developed.')
-- The addition is concise and does not disrupt the existing documentation
-- The change is committed and pushed to the repository
+- The README file contains the added comment.
+- The comment is a single line.
+- No other changes are made to the file.
 
 ## Files to Change
 - README.md
