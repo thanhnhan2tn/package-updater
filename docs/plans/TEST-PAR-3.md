@@ -1,12 +1,12 @@
-# Implementation Plan: Add a simple log line to README #3
+# Implementation Plan: Add a simple comment to README #3
 
 ## Spec
-Add a line to README.md that demonstrates a simple logging example using Python's built-in logging module. The line should be placed under an existing 'Usage' section or at the end of the file if no such section exists.
+Add a single-line comment to the README file at the top, explaining its purpose. The comment should be a plain text line starting with '#'.
 
 ## Acceptance Criteria
-- README.md contains a new line with a logging example, e.g., `logging.info('This is a log message')`.
-- The line is properly formatted in markdown (e.g., as a code block if appropriate).
-- No other files are modified.
+- The README file contains a comment at the start of the file.
+- The comment is a single line starting with '#'.
+- The comment does not disrupt existing content.
 
 ## Files to Change
 - README.md
