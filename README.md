@@ -125,3 +125,4 @@ check-update/
 ## License
 
 Apache 2.0
+# This is a comment
